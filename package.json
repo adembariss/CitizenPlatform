@@ -1,0 +1,16 @@
+{
+  "name": "citizen-platform",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/admin-web",
+    "apps/citizen-web",
+    "apps/citizen-mobile"
+  ],
+  "scripts": {
+    "dev:admin": "npm --workspace @citizen-platform/admin-web run dev",
+    "dev:citizen-web": "npm --workspace @citizen-platform/citizen-web run dev",
+    "dev:citizen-mobile": "npm --workspace @citizen-platform/citizen-mobile run start",
+    "build:web": "npm --workspace @citizen-platform/admin-web run build && npm --workspace @citizen-platform/citizen-web run build"
+  }
+}

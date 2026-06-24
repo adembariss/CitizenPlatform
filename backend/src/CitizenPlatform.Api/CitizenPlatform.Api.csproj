@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="..\CitizenPlatform.Application\CitizenPlatform.Application.csproj" />
+    <ProjectReference Include="..\CitizenPlatform.Infrastructure\CitizenPlatform.Infrastructure.csproj" />
+    <ProjectReference Include="..\CitizenPlatform.Integrations\CitizenPlatform.Integrations.csproj" />
+  </ItemGroup>
+</Project>

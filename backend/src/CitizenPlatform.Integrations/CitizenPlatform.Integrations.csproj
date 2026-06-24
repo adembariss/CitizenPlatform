@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\CitizenPlatform.Application\CitizenPlatform.Application.csproj" />
+    <ProjectReference Include="..\CitizenPlatform.Domain\CitizenPlatform.Domain.csproj" />
+  </ItemGroup>
+</Project>

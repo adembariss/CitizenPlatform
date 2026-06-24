@@ -1,0 +1,102 @@
+:root {
+  color: #1f2933;
+  background: #eef5f2;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.citizen-shell {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.1fr);
+  gap: 32px;
+  align-items: center;
+  padding: 40px;
+}
+
+.intro {
+  display: grid;
+  gap: 12px;
+}
+
+.intro p,
+label {
+  color: #52635e;
+}
+
+.intro p,
+.intro h1 {
+  margin: 0;
+}
+
+.intro h1 {
+  max-width: 560px;
+  font-size: 44px;
+  line-height: 1.1;
+}
+
+.report-form {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid #d1ddd8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+label {
+  display: grid;
+  gap: 8px;
+  font-weight: 700;
+}
+
+input,
+textarea {
+  width: 100%;
+  border: 1px solid #c8d5d0;
+  border-radius: 6px;
+  padding: 12px;
+  color: #1f2933;
+  font: inherit;
+}
+
+.map-placeholder {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  border: 1px dashed #7d918a;
+  border-radius: 8px;
+  color: #40524c;
+  background: #eef5f2;
+}
+
+button {
+  border: 0;
+  border-radius: 6px;
+  padding: 14px 18px;
+  color: #ffffff;
+  background: #1f6f55;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 820px) {
+  .citizen-shell {
+    grid-template-columns: 1fr;
+    padding: 24px;
+  }
+
+  .intro h1 {
+    font-size: 34px;
+  }
+}

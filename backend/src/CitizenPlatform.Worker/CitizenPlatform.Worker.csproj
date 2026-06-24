@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\CitizenPlatform.Application\CitizenPlatform.Application.csproj" />
+    <ProjectReference Include="..\CitizenPlatform.Infrastructure\CitizenPlatform.Infrastructure.csproj" />
+    <ProjectReference Include="..\CitizenPlatform.Integrations\CitizenPlatform.Integrations.csproj" />
+  </ItemGroup>
+</Project>
