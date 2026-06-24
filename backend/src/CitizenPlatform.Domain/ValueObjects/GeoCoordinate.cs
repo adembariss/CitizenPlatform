@@ -4,6 +4,10 @@ namespace CitizenPlatform.Domain.ValueObjects;
 
 public sealed class GeoCoordinate : ValueObject
 {
+    private GeoCoordinate()
+    {
+    }
+
     public GeoCoordinate(double latitude, double longitude)
     {
         if (latitude is < -90 or > 90)
@@ -20,9 +24,14 @@ public sealed class GeoCoordinate : ValueObject
         Longitude = longitude;
     }
 
-    public double Latitude { get; }
+    public double Latitude { get; private set; }
 
-    public double Longitude { get; }
+    public double Longitude { get; private set; }
+
+    public string ToWktPoint()
+    {
+        return FormattableString.Invariant($"POINT ({Longitude} {Latitude})");
+    }
 
     protected override IEnumerable<object?> GetEqualityComponents()
     {

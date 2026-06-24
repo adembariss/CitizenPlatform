@@ -3,9 +3,12 @@ using CitizenPlatform.Domain.Enums;
 namespace CitizenPlatform.Application.Features.Complaints;
 
 public sealed record SubmitComplaintCommand(
-    Guid MunicipalityId,
+    Guid CategoryId,
     string Title,
     string Description,
     double Latitude,
     double Longitude,
-    SubmissionChannel Channel);
+    ComplaintSource Source,
+    Guid? CitizenId = null,
+    double? PhotoExifLatitude = null,
+    double? PhotoExifLongitude = null);

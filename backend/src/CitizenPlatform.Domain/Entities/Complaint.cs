@@ -5,78 +5,214 @@ using CitizenPlatform.Domain.ValueObjects;
 
 namespace CitizenPlatform.Domain.Entities;
 
-public sealed class Complaint : Entity
+public sealed class Complaint : AuditableEntity
 {
+    private readonly List<ComplaintAttachment> _attachments = [];
+    private readonly List<ComplaintStatusHistory> _statusHistories = [];
+    private readonly List<ComplaintComment> _comments = [];
+    private readonly List<ComplaintAssignment> _assignments = [];
+
+    private Complaint()
+    {
+    }
+
     private Complaint(
         Guid id,
         Guid municipalityId,
+        Guid categoryId,
+        string trackingCode,
         string title,
         string description,
         GeoCoordinate location,
-        SubmissionChannel channel)
+        ComplaintSource source,
+        Guid? citizenId,
+        GeoCoordinate? photoExifLocation,
+        ComplaintPriority priority)
         : base(id)
     {
-        MunicipalityId = municipalityId;
-        Title = title;
-        Description = description;
-        Location = location;
-        Channel = channel;
-        Status = ComplaintStatus.Submitted;
-        Priority = ComplaintPriority.Normal;
-        CreatedAt = DateTimeOffset.UtcNow;
+        MunicipalityId = Guard.AgainstEmpty(municipalityId, nameof(municipalityId));
+        CategoryId = Guard.AgainstEmpty(categoryId, nameof(categoryId));
+        TrackingCode = Guard.AgainstEmpty(trackingCode, nameof(trackingCode), 64);
+        Title = Guard.AgainstEmpty(title, nameof(title), 200);
+        Description = Guard.AgainstEmpty(description, nameof(description), 4000);
+        Location = location ?? throw new ArgumentNullException(nameof(location));
+        LocationGeometry = location.ToWktPoint();
+        PhotoExifLocation = photoExifLocation;
+        PhotoExifGeometry = photoExifLocation?.ToWktPoint();
+        Source = source;
+        CitizenId = citizenId == Guid.Empty ? null : citizenId;
+        Status = ComplaintStatus.New;
+        Priority = priority;
+
+        AddDomainEvent(new ComplaintSubmittedDomainEvent(Id, MunicipalityId, TrackingCode, DateTimeOffset.UtcNow));
     }
 
-    public Guid MunicipalityId { get; }
+    public Guid MunicipalityId { get; private set; }
 
-    public string Title { get; private set; }
+    public Guid CategoryId { get; private set; }
 
-    public string Description { get; private set; }
+    public Guid? CitizenId { get; private set; }
 
-    public GeoCoordinate Location { get; private set; }
+    public string TrackingCode { get; private set; } = string.Empty;
 
-    public SubmissionChannel Channel { get; }
+    public string Title { get; private set; } = string.Empty;
+
+    public string Description { get; private set; } = string.Empty;
+
+    public GeoCoordinate Location { get; private set; } = null!;
+
+    public string LocationGeometry { get; private set; } = string.Empty;
+
+    public GeoCoordinate? PhotoExifLocation { get; private set; }
+
+    public string? PhotoExifGeometry { get; private set; }
 
     public ComplaintStatus Status { get; private set; }
 
     public ComplaintPriority Priority { get; private set; }
 
-    public DateTimeOffset CreatedAt { get; }
+    public ComplaintSource Source { get; private set; }
 
-    public static Complaint Submit(
+    public Guid? CurrentDepartmentId { get; private set; }
+
+    public Guid? AssignedUserId { get; private set; }
+
+    public string? ExternalMunicipalityComplaintId { get; private set; }
+
+    public string? ExternalMunicipalityStatus { get; private set; }
+
+    public DateTimeOffset? LastSyncAttemptAt { get; private set; }
+
+    public DateTimeOffset? SyncedAt { get; private set; }
+
+    public IReadOnlyCollection<ComplaintAttachment> Attachments => _attachments.AsReadOnly();
+
+    public IReadOnlyCollection<ComplaintStatusHistory> StatusHistories => _statusHistories.AsReadOnly();
+
+    public IReadOnlyCollection<ComplaintComment> Comments => _comments.AsReadOnly();
+
+    public IReadOnlyCollection<ComplaintAssignment> Assignments => _assignments.AsReadOnly();
+
+    public static Complaint Create(
         Guid municipalityId,
+        Guid categoryId,
+        string trackingCode,
         string title,
         string description,
         GeoCoordinate location,
-        SubmissionChannel channel)
+        ComplaintSource source,
+        Guid? citizenId = null,
+        GeoCoordinate? photoExifLocation = null,
+        ComplaintPriority priority = ComplaintPriority.Normal)
     {
-        if (municipalityId == Guid.Empty)
-        {
-            throw new ArgumentException("Municipality id is required.", nameof(municipalityId));
-        }
-
-        if (string.IsNullOrWhiteSpace(title))
-        {
-            throw new ArgumentException("Title is required.", nameof(title));
-        }
-
-        if (string.IsNullOrWhiteSpace(description))
-        {
-            throw new ArgumentException("Description is required.", nameof(description));
-        }
-
-        var complaint = new Complaint(Guid.NewGuid(), municipalityId, title.Trim(), description.Trim(), location, channel);
-        complaint.AddDomainEvent(new ComplaintSubmittedDomainEvent(complaint.Id, municipalityId, DateTimeOffset.UtcNow));
-
-        return complaint;
+        return new Complaint(
+            Guid.NewGuid(),
+            municipalityId,
+            categoryId,
+            trackingCode,
+            title,
+            description,
+            location,
+            source,
+            citizenId,
+            photoExifLocation,
+            priority);
     }
 
-    public void MarkInReview()
+    public ComplaintStatusHistory ChangeStatus(ComplaintStatus newStatus, Guid changedByUserId, string? note = null)
     {
-        Status = ComplaintStatus.InReview;
+        Guard.AgainstEmpty(changedByUserId, nameof(changedByUserId));
+
+        if (Status == newStatus)
+        {
+            throw new InvalidOperationException($"Complaint is already in {newStatus} status.");
+        }
+
+        var previousStatus = Status;
+        Status = newStatus;
+
+        var history = ComplaintStatusHistory.Create(Id, previousStatus, newStatus, changedByUserId, note);
+        _statusHistories.Add(history);
+
+        Touch();
+        AddDomainEvent(new ComplaintStatusChangedDomainEvent(Id, previousStatus, newStatus, changedByUserId, DateTimeOffset.UtcNow));
+
+        return history;
     }
 
-    public void AssignPriority(ComplaintPriority priority)
+    public ComplaintAssignment AssignToDepartment(
+        Guid departmentId,
+        Guid assignedByUserId,
+        Guid? assignedUserId = null,
+        string? note = null)
     {
-        Priority = priority;
+        Guard.AgainstEmpty(departmentId, nameof(departmentId));
+        Guard.AgainstEmpty(assignedByUserId, nameof(assignedByUserId));
+
+        CurrentDepartmentId = departmentId;
+        AssignedUserId = assignedUserId == Guid.Empty ? null : assignedUserId;
+
+        var assignment = ComplaintAssignment.Create(Id, departmentId, assignedByUserId, AssignedUserId, note);
+        _assignments.Add(assignment);
+
+        if (Status != ComplaintStatus.Assigned)
+        {
+            ChangeStatus(ComplaintStatus.Assigned, assignedByUserId, "Complaint assigned to department.");
+        }
+        else
+        {
+            Touch();
+        }
+
+        return assignment;
+    }
+
+    public ComplaintComment AddComment(Guid authorUserId, string body, bool isInternal = false)
+    {
+        var comment = ComplaintComment.Create(Id, authorUserId, body, isInternal);
+        _comments.Add(comment);
+        Touch();
+
+        return comment;
+    }
+
+    public ComplaintAttachment AddAttachment(
+        string fileName,
+        string contentType,
+        long sizeInBytes,
+        StorageProvider storageProvider,
+        string objectKey,
+        Guid? uploadedByUserId = null,
+        GeoCoordinate? photoExifLocation = null)
+    {
+        var attachment = ComplaintAttachment.Create(
+            Id,
+            fileName,
+            contentType,
+            sizeInBytes,
+            storageProvider,
+            objectKey,
+            uploadedByUserId,
+            photoExifLocation);
+
+        _attachments.Add(attachment);
+        Touch();
+
+        return attachment;
+    }
+
+    public void MarkMunicipalitySyncAttempted()
+    {
+        LastSyncAttemptAt = DateTimeOffset.UtcNow;
+        Touch();
+    }
+
+    public void MarkMunicipalitySynced(string externalMunicipalityComplaintId, string? externalMunicipalityStatus = null)
+    {
+        ExternalMunicipalityComplaintId = Guard.AgainstEmpty(externalMunicipalityComplaintId, nameof(externalMunicipalityComplaintId), 128);
+        ExternalMunicipalityStatus = string.IsNullOrWhiteSpace(externalMunicipalityStatus) ? null : externalMunicipalityStatus.Trim();
+        SyncedAt = DateTimeOffset.UtcNow;
+        LastSyncAttemptAt = SyncedAt;
+        Touch();
     }
 }

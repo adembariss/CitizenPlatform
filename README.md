@@ -82,6 +82,7 @@ docker-compose.yml
 - `GlobalExceptionMiddleware` tüm beklenmeyen hataları standart `ApiResponse` formatında döndürür.
 - Domain katmanı dış framework ve altyapı bağımlılığı almaz.
 - Infrastructure ve Integrations katmanları şimdilik adaptör sınırlarını ve konfigürasyon modellerini içerir.
+- Domain ve veritabanı model özeti için `docs/database-design.md` dosyasına bakın.
 
 ## Geliştirme Notları
 
