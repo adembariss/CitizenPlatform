@@ -37,6 +37,10 @@ internal sealed class ComplaintConfiguration : IEntityTypeConfiguration<Complain
             .HasMaxLength(4000)
             .IsRequired();
 
+        builder.Property(entity => entity.AddressText)
+            .HasColumnName("address_text")
+            .HasMaxLength(1000);
+
         builder.OwnsOne(entity => entity.Location, location =>
         {
             location.Property(coordinate => coordinate.Latitude)

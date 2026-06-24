@@ -12,26 +12,26 @@ public sealed class ComplaintStatusHistory : AuditableEntity
     private ComplaintStatusHistory(
         Guid id,
         Guid complaintId,
-        ComplaintStatus previousStatus,
+        ComplaintStatus? previousStatus,
         ComplaintStatus newStatus,
-        Guid changedByUserId,
+        Guid? changedByUserId,
         string? note)
         : base(id)
     {
         ComplaintId = Guard.AgainstEmpty(complaintId, nameof(complaintId));
         PreviousStatus = previousStatus;
         NewStatus = newStatus;
-        ChangedByUserId = Guard.AgainstEmpty(changedByUserId, nameof(changedByUserId));
+        ChangedByUserId = changedByUserId == Guid.Empty ? null : changedByUserId;
         Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
     }
 
     public Guid ComplaintId { get; private set; }
 
-    public ComplaintStatus PreviousStatus { get; private set; }
+    public ComplaintStatus? PreviousStatus { get; private set; }
 
     public ComplaintStatus NewStatus { get; private set; }
 
-    public Guid ChangedByUserId { get; private set; }
+    public Guid? ChangedByUserId { get; private set; }
 
     public string? Note { get; private set; }
 
@@ -48,5 +48,10 @@ public sealed class ComplaintStatusHistory : AuditableEntity
         }
 
         return new ComplaintStatusHistory(Guid.NewGuid(), complaintId, previousStatus, newStatus, changedByUserId, note);
+    }
+
+    public static ComplaintStatusHistory CreateInitial(Guid complaintId, string? note = null)
+    {
+        return new ComplaintStatusHistory(Guid.NewGuid(), complaintId, null, ComplaintStatus.New, null, note);
     }
 }

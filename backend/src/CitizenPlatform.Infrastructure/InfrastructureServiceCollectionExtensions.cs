@@ -2,7 +2,10 @@ using CitizenPlatform.Application.Abstractions;
 using CitizenPlatform.Infrastructure.Geospatial;
 using CitizenPlatform.Infrastructure.Identity;
 using CitizenPlatform.Infrastructure.Persistence;
+using CitizenPlatform.Infrastructure.Persistence.Repositories;
 using CitizenPlatform.Infrastructure.Storage;
+using CitizenPlatform.Infrastructure.Time;
+using CitizenPlatform.Infrastructure.Tracking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,10 +22,18 @@ public static class InfrastructureServiceCollectionExtensions
             options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.UseNetTopologySuite()));
 
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
         services.AddScoped<IFileStorageService, LocalObjectStorageService>();
         services.AddScoped<IGeospatialService, GeospatialService>();
         services.AddScoped<IGeoMunicipalityBoundaryLookup, PostgisMunicipalityBoundaryLookup>();
         services.AddScoped<IGeoMunicipalityResolver, GeoMunicipalityResolver>();
+        services.AddScoped<IComplaintRepository, ComplaintRepository>();
+        services.AddScoped<IComplaintCategoryRepository, ComplaintCategoryRepository>();
+        services.AddScoped<ICategoryDepartmentRuleRepository, CategoryDepartmentRuleRepository>();
+        services.AddScoped<ICitizenRepository, CitizenRepository>();
+        services.AddScoped<IIntegrationOutboxRepository, IntegrationOutboxRepository>();
+        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        services.AddScoped<ITrackingCodeGenerator, TrackingCodeGenerator>();
 
         return services;
     }

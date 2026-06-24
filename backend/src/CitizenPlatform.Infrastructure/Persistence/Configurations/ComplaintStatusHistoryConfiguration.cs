@@ -18,8 +18,7 @@ internal sealed class ComplaintStatusHistoryConfiguration : IEntityTypeConfigura
         builder.Property(entity => entity.PreviousStatus)
             .HasColumnName("previous_status")
             .HasConversion<string>()
-            .HasMaxLength(50)
-            .IsRequired();
+            .HasMaxLength(50);
 
         builder.Property(entity => entity.NewStatus)
             .HasColumnName("new_status")
@@ -28,8 +27,7 @@ internal sealed class ComplaintStatusHistoryConfiguration : IEntityTypeConfigura
             .IsRequired();
 
         builder.Property(entity => entity.ChangedByUserId)
-            .HasColumnName("changed_by_user_id")
-            .IsRequired();
+            .HasColumnName("changed_by_user_id");
 
         builder.Property(entity => entity.Note)
             .HasColumnName("note")

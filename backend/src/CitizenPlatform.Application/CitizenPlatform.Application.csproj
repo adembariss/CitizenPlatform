@@ -2,4 +2,7 @@
   <ItemGroup>
     <ProjectReference Include="..\CitizenPlatform.Domain\CitizenPlatform.Domain.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
 </Project>

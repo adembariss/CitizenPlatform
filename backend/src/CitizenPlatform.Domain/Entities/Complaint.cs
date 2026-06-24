@@ -23,18 +23,23 @@ public sealed class Complaint : AuditableEntity
         string trackingCode,
         string title,
         string description,
+        string? addressText,
         GeoCoordinate location,
         ComplaintSource source,
         Guid? citizenId,
         GeoCoordinate? photoExifLocation,
-        ComplaintPriority priority)
+        ComplaintPriority priority,
+        DateTimeOffset? createdAt)
         : base(id)
     {
+        var occurredOn = createdAt ?? DateTimeOffset.UtcNow;
+
         MunicipalityId = Guard.AgainstEmpty(municipalityId, nameof(municipalityId));
         CategoryId = Guard.AgainstEmpty(categoryId, nameof(categoryId));
         TrackingCode = Guard.AgainstEmpty(trackingCode, nameof(trackingCode), 64);
         Title = Guard.AgainstEmpty(title, nameof(title), 200);
         Description = Guard.AgainstEmpty(description, nameof(description), 4000);
+        AddressText = string.IsNullOrWhiteSpace(addressText) ? null : addressText.Trim();
         Location = location ?? throw new ArgumentNullException(nameof(location));
         LocationGeometry = location.ToWktPoint();
         PhotoExifLocation = photoExifLocation;
@@ -43,8 +48,9 @@ public sealed class Complaint : AuditableEntity
         CitizenId = citizenId == Guid.Empty ? null : citizenId;
         Status = ComplaintStatus.New;
         Priority = priority;
+        CreatedAt = occurredOn;
 
-        AddDomainEvent(new ComplaintSubmittedDomainEvent(Id, MunicipalityId, TrackingCode, DateTimeOffset.UtcNow));
+        AddDomainEvent(new ComplaintSubmittedDomainEvent(Id, MunicipalityId, TrackingCode, occurredOn));
     }
 
     public Guid MunicipalityId { get; private set; }
@@ -58,6 +64,8 @@ public sealed class Complaint : AuditableEntity
     public string Title { get; private set; } = string.Empty;
 
     public string Description { get; private set; } = string.Empty;
+
+    public string? AddressText { get; private set; }
 
     public GeoCoordinate Location { get; private set; } = null!;
 
@@ -103,7 +111,9 @@ public sealed class Complaint : AuditableEntity
         ComplaintSource source,
         Guid? citizenId = null,
         GeoCoordinate? photoExifLocation = null,
-        ComplaintPriority priority = ComplaintPriority.Normal)
+        ComplaintPriority priority = ComplaintPriority.Normal,
+        string? addressText = null,
+        DateTimeOffset? createdAt = null)
     {
         return new Complaint(
             Guid.NewGuid(),
@@ -112,11 +122,33 @@ public sealed class Complaint : AuditableEntity
             trackingCode,
             title,
             description,
+            addressText,
             location,
             source,
             citizenId,
             photoExifLocation,
-            priority);
+            priority,
+            createdAt);
+    }
+
+    public ComplaintStatusHistory RecordInitialStatus(string? note = null)
+    {
+        if (_statusHistories.Any(history => history.PreviousStatus is null && history.NewStatus == ComplaintStatus.New))
+        {
+            throw new InvalidOperationException("Initial status history has already been recorded.");
+        }
+
+        var history = ComplaintStatusHistory.CreateInitial(Id, note);
+        _statusHistories.Add(history);
+        Touch();
+
+        return history;
+    }
+
+    public void RouteToDepartment(Guid departmentId)
+    {
+        CurrentDepartmentId = Guard.AgainstEmpty(departmentId, nameof(departmentId));
+        Touch();
     }
 
     public ComplaintStatusHistory ChangeStatus(ComplaintStatus newStatus, Guid changedByUserId, string? note = null)

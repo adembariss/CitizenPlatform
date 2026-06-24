@@ -35,6 +35,7 @@ public sealed class PostgisMunicipalityBoundaryLookup : IGeoMunicipalityBoundary
             from boundary in matchingBoundaries
             join municipality in _dbContext.Municipalities on boundary.MunicipalityId equals municipality.Id
             where municipality.IsActive
+            orderby municipality.Name, boundary.Id
             select new MunicipalityBoundaryLookupResult(
                 boundary.Id,
                 municipality.Id,
@@ -43,9 +44,6 @@ public sealed class PostgisMunicipalityBoundaryLookup : IGeoMunicipalityBoundary
 
         // If multiple active boundaries contain the point, pick the first deterministic match for now.
         // Future selection can order by explicit boundary priority or by the smallest containing area.
-        return await query
-            .OrderBy(match => match.MunicipalityName)
-            .ThenBy(match => match.BoundaryId)
-            .FirstOrDefaultAsync(ct);
+        return await query.FirstOrDefaultAsync(ct);
     }
 }
