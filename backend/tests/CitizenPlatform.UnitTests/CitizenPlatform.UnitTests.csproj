@@ -14,5 +14,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\CitizenPlatform.Domain\CitizenPlatform.Domain.csproj" />
     <ProjectReference Include="..\..\src\CitizenPlatform.Application\CitizenPlatform.Application.csproj" />
+    <ProjectReference Include="..\..\src\CitizenPlatform.Infrastructure\CitizenPlatform.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

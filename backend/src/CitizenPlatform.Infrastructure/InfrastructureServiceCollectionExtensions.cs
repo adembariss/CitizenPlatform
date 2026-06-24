@@ -21,6 +21,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IFileStorageService, LocalObjectStorageService>();
         services.AddScoped<IGeospatialService, GeospatialService>();
+        services.AddScoped<IGeoMunicipalityBoundaryLookup, PostgisMunicipalityBoundaryLookup>();
+        services.AddScoped<IGeoMunicipalityResolver, GeoMunicipalityResolver>();
 
         return services;
     }

@@ -15,6 +15,11 @@ public sealed record ApiResponse<T>(
     {
         return new ApiResponse<T>(false, default, message, errors ?? Array.Empty<string>());
     }
+
+    public static ApiResponse<T> Fail(T? data, string message, IReadOnlyCollection<string>? errors = null)
+    {
+        return new ApiResponse<T>(false, data, message, errors ?? Array.Empty<string>());
+    }
 }
 
 public sealed record ApiResponse(

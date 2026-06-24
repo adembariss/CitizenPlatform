@@ -5,6 +5,7 @@ TestResults/
 *.user
 *.suo
 *.rsuser
+**/Properties/launchSettings.json
 
 # Node / frontend
 node_modules/
@@ -26,6 +27,7 @@ pnpm-debug.log*
 Thumbs.db
 
 # IDE
+.vs/
 .idea/
 .vscode/
 
