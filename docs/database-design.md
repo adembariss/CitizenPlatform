@@ -58,6 +58,54 @@ Belediye entegrasyon senkronizasyonu için:
 - Domain EF Core'a bağımlı değildir; entity'lerde EF materialization için private/protected parameterless constructor bulunur.
 - `GeoCoordinate` latitude için `-90..90`, longitude için `-180..180` aralığını doğrular.
 
+## EF Core Persistence
+
+Infrastructure katmanında ana context `CitizenPlatformDbContext` olarak tanımlıdır. PostgreSQL provider olarak Npgsql, spatial provider olarak NetTopologySuite kullanılır. Schema adı `public` olarak sabitlenmiştir.
+
+Persistence mapping'leri Fluent API ile `CitizenPlatform.Infrastructure/Persistence/Configurations` altında tutulur. Domain katmanı NetTopologySuite'a bağımlı değildir; domain'de WKT string olarak tutulan geometry karşılıkları EF mapping içinde PostGIS geometry kolonlarına dönüştürülür.
+
+- `municipality_boundaries.boundary_geometry`: `geometry(MultiPolygon,4326)`
+- `complaints.location_geometry`: `geometry(Point,4326)`
+- `complaints.photo_exif_geometry`: `geometry(Point,4326)`, nullable
+- `complaint_attachments.photo_exif_geometry`: `geometry(Point,4326)`, nullable
+
+Spatial sorgular için GIST indexleri oluşturulur:
+
+- `ix_municipality_boundaries_boundary_geometry_gist`
+- `ix_complaints_location_geometry_gist`
+
+`complaints.tracking_code` için `ux_complaints_tracking_code` unique index'i bulunur. Nullable unique alanlarda filtered index kullanılır; örnek olarak `citizens.email` için `email IS NOT NULL AND is_deleted = false` filtresi vardır.
+
+`AuditableEntity` türevi tüm entity'lerde global query filter `is_deleted = false` koşulunu uygular. `SaveChanges` ve `SaveChangesAsync` sırasında:
+
+- Yeni entity'lerde `created_at` otomatik set edilir.
+- Güncellenen entity'lerde `updated_at` otomatik set edilir.
+- Delete operasyonları fiziksel silmeye gitmeden soft delete'e çevrilir.
+
+Audit kayıtları şimdilik manuel `audit_logs` entity'si üzerinden yazılır.
+
+## Migration ve SQL Scriptleri
+
+İlk migration:
+
+```powershell
+dotnet ef migrations add InitialCreate --project backend/src/CitizenPlatform.Infrastructure/CitizenPlatform.Infrastructure.csproj --startup-project backend/src/CitizenPlatform.Api/CitizenPlatform.Api.csproj --output-dir Persistence/Migrations --context CitizenPlatformDbContext
+```
+
+Yerel EF tool manifest repoda bulunur. Yeni makinede önce şu komut çalıştırılabilir:
+
+```powershell
+dotnet tool restore
+```
+
+`database/main-db` altında manuel/veritabanı bootstrap scriptleri bulunur:
+
+- `001_enable_postgis.sql`: PostGIS extension'ını açar.
+- `002_indexes.sql`: Temel GIST, tracking code ve filtered indexleri idempotent olarak oluşturur.
+- `003_seed_demo_municipality.sql`: Demo Belediyesi, demo boundary, kategori, birim ve kategori-birim kurallarını ekler.
+
+Demo boundary İstanbul civarında basit bir örnek polygon'dur; gerçek belediye sınırı olarak kullanılmamalıdır.
+
 ## Enumlar
 
 - `UserType`: `SystemAdmin`, `MunicipalityAdmin`, `MunicipalityEmployee`, `Citizen`
