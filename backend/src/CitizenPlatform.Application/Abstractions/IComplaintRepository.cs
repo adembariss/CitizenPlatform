@@ -8,5 +8,7 @@ public interface IComplaintRepository
 
     Task<Complaint?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
+    Task<Complaint?> GetByTrackingCodeAsync(string trackingCode, CancellationToken cancellationToken);
+
     Task<bool> ExistsByTrackingCodeAsync(string trackingCode, CancellationToken cancellationToken);
 }

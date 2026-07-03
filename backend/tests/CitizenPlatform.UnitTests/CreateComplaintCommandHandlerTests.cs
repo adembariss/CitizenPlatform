@@ -1,4 +1,5 @@
 using CitizenPlatform.Application.Abstractions;
+using CitizenPlatform.Application.Common.Models;
 using CitizenPlatform.Application.DTOs;
 using CitizenPlatform.Application.Features.Complaints;
 using CitizenPlatform.Domain.Entities;
@@ -81,7 +82,25 @@ public sealed class CreateComplaintCommandHandlerTests
         Assert.StartsWith("BLD-2026-", result.Value.TrackingCode, StringComparison.Ordinal);
     }
 
-    private static CreateComplaintCommand CreateValidCommand()
+    [Fact]
+    public async Task HandleAsync_WhenAttachmentProvided_AddsAttachment()
+    {
+        var context = HandlerContext.Create();
+
+        var result = await context.Handler.HandleAsync(
+            CreateValidCommand([CreateJpegUpload()]),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var complaint = Assert.Single(context.ComplaintRepository.Items);
+        var attachment = Assert.Single(complaint.Attachments);
+        Assert.Equal("photo.jpg", attachment.OriginalFileName);
+        Assert.Equal("image/jpeg", attachment.ContentType);
+        Assert.False(string.IsNullOrWhiteSpace(attachment.Sha256Hash));
+    }
+
+    private static CreateComplaintCommand CreateValidCommand(
+        IReadOnlyCollection<ComplaintAttachmentUpload>? attachments = null)
     {
         return new CreateComplaintCommand(
             CategoryId,
@@ -94,7 +113,17 @@ public sealed class CreateComplaintCommandHandlerTests
             29.00,
             "Demo adres",
             false,
-            ComplaintSource.CitizenWeb);
+            ComplaintSource.CitizenWeb,
+            attachments);
+    }
+
+    private static ComplaintAttachmentUpload CreateJpegUpload()
+    {
+        return new ComplaintAttachmentUpload(
+            "photo.jpg",
+            "image/jpeg",
+            4,
+            () => new MemoryStream([0xFF, 0xD8, 0xFF, 0xD9]));
     }
 
     private sealed record HandlerContext(
@@ -115,6 +144,7 @@ public sealed class CreateComplaintCommandHandlerTests
                 new FakeCitizenRepository(),
                 complaintRepository,
                 outboxRepository,
+                new ComplaintAttachmentUploadService(new FakeFileStorageService(), new FakeImageMetadataReader()),
                 new FakeTrackingCodeGenerator(),
                 new FakeDateTimeProvider(),
                 new FakeUnitOfWork());
@@ -198,6 +228,11 @@ public sealed class CreateComplaintCommandHandlerTests
             return Task.FromResult(Items.FirstOrDefault(complaint => complaint.Id == id));
         }
 
+        public Task<Complaint?> GetByTrackingCodeAsync(string trackingCode, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Items.FirstOrDefault(complaint => complaint.TrackingCode == trackingCode));
+        }
+
         public Task<bool> ExistsByTrackingCodeAsync(string trackingCode, CancellationToken cancellationToken)
         {
             return Task.FromResult(false);
@@ -235,6 +270,43 @@ public sealed class CreateComplaintCommandHandlerTests
             CancellationToken cancellationToken)
         {
             return await operation(cancellationToken);
+        }
+    }
+
+    private sealed class FakeFileStorageService : IFileStorageService
+    {
+        public Task<Result<FileStorageSaveResult>> SaveAsync(
+            FileStorageSaveRequest request,
+            CancellationToken cancellationToken)
+        {
+            var result = new FileStorageSaveResult(
+                "complaint-attachments/test.jpg",
+                "test.jpg",
+                request.OriginalFileName,
+                request.ContentType,
+                request.SizeInBytes,
+                new string('a', 64),
+                StorageProvider.Local);
+
+            return Task.FromResult(Result<FileStorageSaveResult>.Success(result));
+        }
+
+        public Task<Stream> OpenReadAsync(string objectKey, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<Stream>(new MemoryStream([0xFF, 0xD8, 0xFF, 0xD9]));
+        }
+
+        public Task DeleteAsync(string objectKey, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeImageMetadataReader : IImageMetadataReader
+    {
+        public Task<ImageMetadata> ReadAsync(Stream content, string contentType, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ImageMetadata.Empty);
         }
     }
 }

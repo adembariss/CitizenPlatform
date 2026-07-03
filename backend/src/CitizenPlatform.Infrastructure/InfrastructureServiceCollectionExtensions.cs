@@ -21,9 +21,13 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddDbContext<CitizenPlatformDbContext>(options =>
             options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.UseNetTopologySuite()));
 
+        services.Configure<ObjectStorageOptions>(configuration.GetSection(ObjectStorageOptions.SectionName));
+
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
-        services.AddScoped<IFileStorageService, LocalObjectStorageService>();
+        services.AddScoped<IFileSafetyScanner, NoOpFileSafetyScanner>();
+        services.AddScoped<IImageMetadataReader, ExifImageMetadataReader>();
+        services.AddScoped<IFileStorageService, LocalFileStorageService>();
         services.AddScoped<IGeospatialService, GeospatialService>();
         services.AddScoped<IGeoMunicipalityBoundaryLookup, PostgisMunicipalityBoundaryLookup>();
         services.AddScoped<IGeoMunicipalityResolver, GeoMunicipalityResolver>();

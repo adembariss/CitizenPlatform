@@ -1,4 +1,5 @@
 using CitizenPlatform.Application.Abstractions;
+using CitizenPlatform.Application.Common.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -26,6 +27,12 @@ public sealed class EfUnitOfWork : IUnitOfWork
             try
             {
                 var result = await operation(cancellationToken);
+                if (result is IResult { IsSuccess: false })
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return result;
+                }
+
                 await _dbContext.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
 

@@ -20,6 +20,11 @@ internal sealed class ComplaintAttachmentConfiguration : IEntityTypeConfiguratio
             .HasMaxLength(255)
             .IsRequired();
 
+        builder.Property(entity => entity.OriginalFileName)
+            .HasColumnName("original_file_name")
+            .HasMaxLength(255)
+            .IsRequired();
+
         builder.Property(entity => entity.ContentType)
             .HasColumnName("content_type")
             .HasMaxLength(128)
@@ -27,6 +32,11 @@ internal sealed class ComplaintAttachmentConfiguration : IEntityTypeConfiguratio
 
         builder.Property(entity => entity.SizeInBytes)
             .HasColumnName("size_in_bytes")
+            .IsRequired();
+
+        builder.Property(entity => entity.Sha256Hash)
+            .HasColumnName("sha256_hash")
+            .HasMaxLength(64)
             .IsRequired();
 
         builder.Property(entity => entity.StorageProvider)
@@ -59,7 +69,11 @@ internal sealed class ComplaintAttachmentConfiguration : IEntityTypeConfiguratio
                 value => GeometryConversion.ToNullablePoint(value),
                 value => GeometryConversion.ToNullableWkt(value));
 
+        builder.Property(entity => entity.PhotoTakenAt)
+            .HasColumnName("photo_taken_at");
+
         builder.HasIndex(entity => entity.ComplaintId);
+        builder.HasIndex(entity => entity.Sha256Hash);
 
         builder.HasOne<User>()
             .WithMany()

@@ -210,24 +210,36 @@ public sealed class Complaint : AuditableEntity
 
     public ComplaintAttachment AddAttachment(
         string fileName,
+        string originalFileName,
         string contentType,
         long sizeInBytes,
+        string sha256Hash,
         StorageProvider storageProvider,
         string objectKey,
         Guid? uploadedByUserId = null,
-        GeoCoordinate? photoExifLocation = null)
+        GeoCoordinate? photoExifLocation = null,
+        DateTimeOffset? photoTakenAt = null)
     {
         var attachment = ComplaintAttachment.Create(
             Id,
             fileName,
+            originalFileName,
             contentType,
             sizeInBytes,
+            sha256Hash,
             storageProvider,
             objectKey,
             uploadedByUserId,
-            photoExifLocation);
+            photoExifLocation,
+            photoTakenAt);
 
         _attachments.Add(attachment);
+        if (PhotoExifLocation is null && photoExifLocation is not null)
+        {
+            PhotoExifLocation = photoExifLocation;
+            PhotoExifGeometry = photoExifLocation.ToWktPoint();
+        }
+
         Touch();
 
         return attachment;

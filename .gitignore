@@ -33,6 +33,7 @@ Thumbs.db
 
 # Docker/local data
 docker-data/
+/storage/
 *.pid
 
 # Coverage

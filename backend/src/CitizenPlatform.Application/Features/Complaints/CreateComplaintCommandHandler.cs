@@ -18,6 +18,7 @@ public sealed class CreateComplaintCommandHandler
     private readonly ICitizenRepository _citizenRepository;
     private readonly IComplaintRepository _complaintRepository;
     private readonly IIntegrationOutboxRepository _integrationOutboxRepository;
+    private readonly ComplaintAttachmentUploadService _attachmentUploadService;
     private readonly ITrackingCodeGenerator _trackingCodeGenerator;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IUnitOfWork _unitOfWork;
@@ -30,6 +31,7 @@ public sealed class CreateComplaintCommandHandler
         ICitizenRepository citizenRepository,
         IComplaintRepository complaintRepository,
         IIntegrationOutboxRepository integrationOutboxRepository,
+        ComplaintAttachmentUploadService attachmentUploadService,
         ITrackingCodeGenerator trackingCodeGenerator,
         IDateTimeProvider dateTimeProvider,
         IUnitOfWork unitOfWork)
@@ -41,6 +43,7 @@ public sealed class CreateComplaintCommandHandler
         _citizenRepository = citizenRepository;
         _complaintRepository = complaintRepository;
         _integrationOutboxRepository = integrationOutboxRepository;
+        _attachmentUploadService = attachmentUploadService;
         _trackingCodeGenerator = trackingCodeGenerator;
         _dateTimeProvider = dateTimeProvider;
         _unitOfWork = unitOfWork;
@@ -129,6 +132,18 @@ public sealed class CreateComplaintCommandHandler
         }
 
         complaint.RecordInitialStatus("Complaint created.");
+
+        var attachmentResult = await _attachmentUploadService.AddUploadsAsync(
+            complaint,
+            command.Attachments,
+            cancellationToken);
+
+        if (!attachmentResult.IsSuccess)
+        {
+            return Result<CreateComplaintResponseDto>.Failure(
+                attachmentResult.Error ?? "Attachments could not be added.",
+                attachmentResult.Errors);
+        }
 
         await _complaintRepository.AddAsync(complaint, cancellationToken);
         await _integrationOutboxRepository.AddAsync(

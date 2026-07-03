@@ -23,6 +23,13 @@ public sealed class ComplaintRepository : IComplaintRepository
         return await _dbContext.Complaints.FirstOrDefaultAsync(complaint => complaint.Id == id, cancellationToken);
     }
 
+    public async Task<Complaint?> GetByTrackingCodeAsync(string trackingCode, CancellationToken cancellationToken)
+    {
+        return await _dbContext.Complaints
+            .Include(complaint => complaint.Attachments)
+            .FirstOrDefaultAsync(complaint => complaint.TrackingCode == trackingCode, cancellationToken);
+    }
+
     public async Task<bool> ExistsByTrackingCodeAsync(string trackingCode, CancellationToken cancellationToken)
     {
         return await _dbContext.Complaints.AnyAsync(complaint => complaint.TrackingCode == trackingCode, cancellationToken);

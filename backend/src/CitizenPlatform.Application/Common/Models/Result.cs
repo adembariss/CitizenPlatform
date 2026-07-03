@@ -1,6 +1,11 @@
 namespace CitizenPlatform.Application.Common.Models;
 
-public sealed record Result(bool IsSuccess, string? Error)
+public interface IResult
+{
+    bool IsSuccess { get; }
+}
+
+public sealed record Result(bool IsSuccess, string? Error) : IResult
 {
     public static Result Success()
     {
@@ -17,7 +22,7 @@ public sealed record Result<T>(
     bool IsSuccess,
     T? Value,
     string? Error,
-    IReadOnlyCollection<string> Errors)
+    IReadOnlyCollection<string> Errors) : IResult
 {
     public static Result<T> Success(T value)
     {

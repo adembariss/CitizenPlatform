@@ -1,4 +1,5 @@
 using CitizenPlatform.Domain.Enums;
+using CitizenPlatform.Application.DTOs;
 
 namespace CitizenPlatform.Application.Features.Complaints;
 
@@ -13,4 +14,5 @@ public sealed record CreateComplaintCommand(
     double Longitude,
     string? AddressText,
     bool IsAnonymous,
-    ComplaintSource Source);
+    ComplaintSource Source,
+    IReadOnlyCollection<ComplaintAttachmentUpload>? Attachments = null);
