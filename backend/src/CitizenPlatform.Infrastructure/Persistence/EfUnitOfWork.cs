@@ -45,4 +45,9 @@ public sealed class EfUnitOfWork : IUnitOfWork
             }
         });
     }
+
+    public Task<int> SaveChangesAsync(CancellationToken cancellationToken)
+    {
+        return _dbContext.SaveChangesAsync(cancellationToken);
+    }
 }

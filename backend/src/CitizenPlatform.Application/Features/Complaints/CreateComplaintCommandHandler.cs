@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using CitizenPlatform.Application.Abstractions;
 using CitizenPlatform.Application.Common.Models;
 using CitizenPlatform.Application.DTOs;
@@ -11,9 +12,15 @@ namespace CitizenPlatform.Application.Features.Complaints;
 
 public sealed class CreateComplaintCommandHandler
 {
+    private static readonly JsonSerializerOptions OutboxJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
+
     private readonly IValidator<CreateComplaintCommand> _validator;
     private readonly IGeoMunicipalityResolver _geoMunicipalityResolver;
     private readonly IComplaintCategoryRepository _categoryRepository;
+    private readonly IDepartmentRepository _departmentRepository;
     private readonly ICategoryDepartmentRuleRepository _categoryDepartmentRuleRepository;
     private readonly ICitizenRepository _citizenRepository;
     private readonly IComplaintRepository _complaintRepository;
@@ -27,6 +34,7 @@ public sealed class CreateComplaintCommandHandler
         IValidator<CreateComplaintCommand> validator,
         IGeoMunicipalityResolver geoMunicipalityResolver,
         IComplaintCategoryRepository categoryRepository,
+        IDepartmentRepository departmentRepository,
         ICategoryDepartmentRuleRepository categoryDepartmentRuleRepository,
         ICitizenRepository citizenRepository,
         IComplaintRepository complaintRepository,
@@ -39,6 +47,7 @@ public sealed class CreateComplaintCommandHandler
         _validator = validator;
         _geoMunicipalityResolver = geoMunicipalityResolver;
         _categoryRepository = categoryRepository;
+        _departmentRepository = departmentRepository;
         _categoryDepartmentRuleRepository = categoryDepartmentRuleRepository;
         _citizenRepository = citizenRepository;
         _complaintRepository = complaintRepository;
@@ -105,6 +114,7 @@ public sealed class CreateComplaintCommandHandler
             municipalityId,
             category.Id,
             cancellationToken);
+        Department? department = null;
 
         var trackingCode = await GenerateUniqueTrackingCodeAsync(cancellationToken);
         if (trackingCode is null)
@@ -129,6 +139,7 @@ public sealed class CreateComplaintCommandHandler
         if (rule is not null)
         {
             complaint.RouteToDepartment(rule.DepartmentId);
+            department = await _departmentRepository.GetByIdAsync(rule.DepartmentId, cancellationToken);
         }
 
         complaint.RecordInitialStatus("Complaint created.");
@@ -147,7 +158,7 @@ public sealed class CreateComplaintCommandHandler
 
         await _complaintRepository.AddAsync(complaint, cancellationToken);
         await _integrationOutboxRepository.AddAsync(
-            BuildComplaintCreatedOutboxMessage(complaint, municipalityResult, category, citizen),
+            BuildComplaintCreatedOutboxMessage(complaint, category, department, citizen),
             cancellationToken);
 
         var response = new CreateComplaintResponseDto(
@@ -210,32 +221,28 @@ public sealed class CreateComplaintCommandHandler
 
     private static IntegrationOutboxMessage BuildComplaintCreatedOutboxMessage(
         Complaint complaint,
-        MunicipalityResolveResult municipalityResult,
         ComplaintCategory category,
+        Department? department,
         Citizen? citizen)
     {
-        var payload = JsonSerializer.Serialize(new
-        {
-            EventType = "ComplaintCreated",
-            ComplaintId = complaint.Id,
-            complaint.TrackingCode,
-            complaint.MunicipalityId,
-            MunicipalityName = municipalityResult.MunicipalityName,
-            MunicipalityCode = municipalityResult.MunicipalityCode,
-            complaint.CategoryId,
-            CategoryCode = category.Code,
-            complaint.CurrentDepartmentId,
-            complaint.Title,
-            complaint.Description,
-            complaint.AddressText,
-            complaint.Status,
-            complaint.Priority,
-            complaint.Source,
-            Latitude = complaint.Location.Latitude,
-            Longitude = complaint.Location.Longitude,
-            CitizenId = citizen?.Id,
-            CreatedAt = complaint.CreatedAt
-        });
+        var payload = JsonSerializer.Serialize(
+            new MunicipalityComplaintCreatedPayload(
+                complaint.Id,
+                complaint.MunicipalityId,
+                complaint.TrackingCode,
+                category.Name,
+                department?.Name,
+                citizen?.FullName,
+                citizen?.PhoneNumber,
+                citizen?.Email,
+                complaint.Description,
+                complaint.AddressText,
+                complaint.Location.Latitude,
+                complaint.Location.Longitude,
+                complaint.Status.ToString(),
+                complaint.Priority.ToString(),
+                complaint.CreatedAt),
+            OutboxJsonOptions);
 
         return IntegrationOutboxMessage.Create(
             complaint.MunicipalityId,

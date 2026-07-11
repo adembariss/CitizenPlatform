@@ -23,4 +23,4 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_citizens_email_active
 
 CREATE INDEX IF NOT EXISTS ix_integration_outbox_pending
     ON public.integration_outbox (status, next_retry_at)
-    WHERE status IN ('Pending', 'Failed') AND is_deleted = false;
+    WHERE status = 'Pending' AND is_deleted = false;

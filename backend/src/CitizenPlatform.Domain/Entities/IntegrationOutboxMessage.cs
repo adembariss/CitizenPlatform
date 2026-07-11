@@ -93,11 +93,20 @@ public sealed class IntegrationOutboxMessage : AuditableEntity
         Touch();
     }
 
-    public void MarkFailed(string failureReason, DateTimeOffset? nextRetryAt)
+    public void MarkRetryScheduled(string failureReason, DateTimeOffset nextRetryAt)
+    {
+        Status = OutboxStatus.Pending;
+        FailureReason = Guard.AgainstEmpty(failureReason, nameof(failureReason), 4000);
+        NextRetryAt = nextRetryAt;
+        ProcessingStartedAt = null;
+        Touch();
+    }
+
+    public void MarkFailed(string failureReason)
     {
         Status = OutboxStatus.Failed;
         FailureReason = Guard.AgainstEmpty(failureReason, nameof(failureReason), 4000);
-        NextRetryAt = nextRetryAt;
+        NextRetryAt = null;
         Touch();
     }
 

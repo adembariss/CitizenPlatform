@@ -140,6 +140,7 @@ public sealed class CreateComplaintCommandHandlerTests
                 new CreateComplaintCommandValidator(),
                 new FakeGeoMunicipalityResolver(resolveSuccess),
                 new FakeComplaintCategoryRepository(categoryAvailable),
+                new FakeDepartmentRepository(),
                 new FakeCategoryDepartmentRuleRepository(),
                 new FakeCitizenRepository(),
                 complaintRepository,
@@ -205,6 +206,15 @@ public sealed class CreateComplaintCommandHandlerTests
         }
     }
 
+    private sealed class FakeDepartmentRepository : IDepartmentRepository
+    {
+        public Task<Department?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            Department? department = Department.Create(MunicipalityId, "Fen Isleri", "FEN_ISLERI");
+            return Task.FromResult<Department?>(department);
+        }
+    }
+
     private sealed class FakeCitizenRepository : ICitizenRepository
     {
         public Task AddAsync(Citizen citizen, CancellationToken cancellationToken)
@@ -248,6 +258,14 @@ public sealed class CreateComplaintCommandHandlerTests
             Items.Add(outboxMessage);
             return Task.CompletedTask;
         }
+
+        public Task<IReadOnlyList<IntegrationOutboxMessage>> GetDueAsync(
+            DateTimeOffset utcNow,
+            int batchSize,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IReadOnlyList<IntegrationOutboxMessage>>(Items);
+        }
     }
 
     private sealed class FakeTrackingCodeGenerator : ITrackingCodeGenerator
@@ -270,6 +288,11 @@ public sealed class CreateComplaintCommandHandlerTests
             CancellationToken cancellationToken)
         {
             return await operation(cancellationToken);
+        }
+
+        public Task<int> SaveChangesAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult(0);
         }
     }
 

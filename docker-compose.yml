@@ -28,6 +28,7 @@ services:
       - "${MUNICIPALITY_DB_PORT:-5433}:5432"
     volumes:
       - municipality_sample_db_data:/var/lib/postgresql/data
+      - ./database/municipality-sample-db:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${MUNICIPALITY_DB_USER:-municipality_sample} -d ${MUNICIPALITY_DB_NAME:-municipality_sample}"]
       interval: 10s

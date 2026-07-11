@@ -33,9 +33,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IGeoMunicipalityResolver, GeoMunicipalityResolver>();
         services.AddScoped<IComplaintRepository, ComplaintRepository>();
         services.AddScoped<IComplaintCategoryRepository, ComplaintCategoryRepository>();
+        services.AddScoped<IDepartmentRepository, DepartmentRepository>();
         services.AddScoped<ICategoryDepartmentRuleRepository, CategoryDepartmentRuleRepository>();
         services.AddScoped<ICitizenRepository, CitizenRepository>();
         services.AddScoped<IIntegrationOutboxRepository, IntegrationOutboxRepository>();
+        services.AddScoped<IMunicipalityDatabaseConnectionResolver, MunicipalityDatabaseConnectionResolver>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<ITrackingCodeGenerator, TrackingCodeGenerator>();
 

@@ -10,6 +10,7 @@ public static class DatabaseConnectionStringResolver
     {
         return configuration.GetConnectionString(DefaultConnectionName)
             ?? configuration["Database:ConnectionString"]
+            ?? configuration["MAIN_DB_CONNECTION"]
             ?? configuration["MAIN_DB_CONNECTION_STRING"]
             ?? "Host=localhost;Port=5432;Database=citizen_platform;Username=citizen_platform;Password=change-me-local";
     }

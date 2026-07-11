@@ -68,4 +68,21 @@ BEGIN
         ('44444444-4444-4444-4444-444444444406', demo_municipality_id, animals_category_id, veterinary_department_id, 'Normal', true, now(), NULL, NULL, false),
         ('44444444-4444-4444-4444-444444444407', demo_municipality_id, other_category_id, enforcement_department_id, 'Low', true, now(), NULL, NULL, false)
     ON CONFLICT (id) DO NOTHING;
+
+    INSERT INTO public.municipality_database_connections
+        (id, municipality_id, provider, connection_name, encrypted_connection_string, is_active, created_at, updated_at, deleted_at, is_deleted)
+    VALUES
+        (
+            '55555555-5555-5555-5555-555555555501',
+            demo_municipality_id,
+            'PostgreSql',
+            'sample-municipality-db',
+            'Host=localhost;Port=5433;Database=municipality_sample;Username=municipality_sample;Password=change-me-local',
+            true,
+            now(),
+            NULL,
+            NULL,
+            false
+        )
+    ON CONFLICT (id) DO NOTHING;
 END $$;

@@ -1,5 +1,22 @@
 # Architecture
 
+## Dual-write değil, Outbox ile güvenli senkronizasyon
+
+CitizenPlatform API request sirasinda belediye veritabanina dogrudan yazmaz. Sikayet once ana veritabanina kaydedilir ve ayni transaction icinde `integration_outbox` tablosuna `ComplaintCreated` mesaji eklenir. Boylece ana complaint kaydi ile entegrasyon mesaji birbirinden kopmaz.
+
+Worker tarafindaki `OutboxProcessorService`, due durumdaki `Pending` outbox mesajlarini arka planda okur. Mesaj `Processing` durumuna alinir, `integration_attempts` icinde yeni deneme kaydi acilir ve ilgili belediyenin aktif `MunicipalityDatabaseConnection` kaydi cozumlenir. Demo implementasyonda `PostgreSqlMunicipalityComplaintWriter`, sample belediye PostgreSQL veritabanina yazar.
+
+Belediye veritabanina yazim idempotent tasarlanir. Sample DB tarafinda `municipal_complaints.main_complaint_id` unique oldugu icin ayni `ComplaintCreated` mesaji tekrar islenirse duplicate complaint uretilmez. Status log insert'i de ayni ana complaint ve status icin tekrar kayit olusturmayacak sekilde korunur.
+
+Hata durumunda Worker API cevabini etkilemez; vatandasin sikayeti ana veritabaninda kalir. Attempt kaydi hata detayi ile kapatilir, outbox `Pending` durumuna geri alinir ve exponential backoff ile `next_retry_at` atanir. `MaxRetryCount` asilinca mesaj `Failed` durumuna gecer ve operasyonel inceleme icin `failure_reason` saklanir.
+
+Bu yaklasim dual-write riskini ortadan kaldirir:
+
+- Belediye DB gecici olarak erisilemezse vatandas kaydi kaybolmaz.
+- Retry ve backoff merkezi olarak Worker tarafinda yonetilir.
+- Idempotency belediye DB seviyesinde unique constraint ile garanti edilir.
+- API hizli cevap verir ve harici sistem gecikmesine baglanmaz.
+
 CitizenPlatform, Clean Architecture prensiplerini Modular Monolith yaklaşımıyla birleştirir.
 
 - Domain katmanı iş kurallarını ve domain eventleri içerir.
