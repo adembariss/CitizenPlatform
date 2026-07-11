@@ -8,4 +8,12 @@ public interface IComplaintCategoryRepository
         Guid categoryId,
         Guid municipalityId,
         CancellationToken cancellationToken);
+
+    Task<ComplaintCategory?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<ComplaintCategory>> ListAsync(Guid? municipalityId, CancellationToken cancellationToken);
+
+    Task<bool> CodeExistsAsync(Guid? municipalityId, string code, CancellationToken cancellationToken);
+
+    Task AddAsync(ComplaintCategory category, CancellationToken cancellationToken);
 }

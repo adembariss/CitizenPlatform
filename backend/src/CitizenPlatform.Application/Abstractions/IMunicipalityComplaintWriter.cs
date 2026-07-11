@@ -12,4 +12,14 @@ public interface IMunicipalityComplaintWriter
         MunicipalityDatabaseConnectionInfo connectionInfo,
         MunicipalityComplaintCreatedPayload payload,
         CancellationToken cancellationToken);
+
+    Task<Result<MunicipalityComplaintWriteResult>> WriteComplaintStatusChangedAsync(
+        MunicipalityDatabaseConnectionInfo connectionInfo,
+        ComplaintStatusChangedPayload payload,
+        CancellationToken cancellationToken);
+
+    Task<Result<MunicipalityComplaintWriteResult>> WriteComplaintAssignedAsync(
+        MunicipalityDatabaseConnectionInfo connectionInfo,
+        ComplaintAssignedPayload payload,
+        CancellationToken cancellationToken);
 }

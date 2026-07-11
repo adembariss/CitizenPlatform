@@ -15,7 +15,8 @@ public sealed class ComplaintStatusHistory : AuditableEntity
         ComplaintStatus? previousStatus,
         ComplaintStatus newStatus,
         Guid? changedByUserId,
-        string? note)
+        string? note,
+        bool isVisibleToCitizen)
         : base(id)
     {
         ComplaintId = Guard.AgainstEmpty(complaintId, nameof(complaintId));
@@ -23,6 +24,7 @@ public sealed class ComplaintStatusHistory : AuditableEntity
         NewStatus = newStatus;
         ChangedByUserId = changedByUserId == Guid.Empty ? null : changedByUserId;
         Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        IsVisibleToCitizen = isVisibleToCitizen;
     }
 
     public Guid ComplaintId { get; private set; }
@@ -35,23 +37,26 @@ public sealed class ComplaintStatusHistory : AuditableEntity
 
     public string? Note { get; private set; }
 
+    public bool IsVisibleToCitizen { get; private set; }
+
     public static ComplaintStatusHistory Create(
         Guid complaintId,
         ComplaintStatus previousStatus,
         ComplaintStatus newStatus,
         Guid changedByUserId,
-        string? note = null)
+        string? note = null,
+        bool isVisibleToCitizen = true)
     {
         if (previousStatus == newStatus)
         {
             throw new InvalidOperationException("Previous and new status cannot be the same.");
         }
 
-        return new ComplaintStatusHistory(Guid.NewGuid(), complaintId, previousStatus, newStatus, changedByUserId, note);
+        return new ComplaintStatusHistory(Guid.NewGuid(), complaintId, previousStatus, newStatus, changedByUserId, note, isVisibleToCitizen);
     }
 
     public static ComplaintStatusHistory CreateInitial(Guid complaintId, string? note = null)
     {
-        return new ComplaintStatusHistory(Guid.NewGuid(), complaintId, null, ComplaintStatus.New, null, note);
+        return new ComplaintStatusHistory(Guid.NewGuid(), complaintId, null, ComplaintStatus.New, null, note, isVisibleToCitizen: true);
     }
 }

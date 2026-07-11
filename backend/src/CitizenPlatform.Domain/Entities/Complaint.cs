@@ -93,6 +93,8 @@ public sealed class Complaint : AuditableEntity
 
     public DateTimeOffset? SyncedAt { get; private set; }
 
+    public DateTimeOffset? ClosedAt { get; private set; }
+
     public IReadOnlyCollection<ComplaintAttachment> Attachments => _attachments.AsReadOnly();
 
     public IReadOnlyCollection<ComplaintStatusHistory> StatusHistories => _statusHistories.AsReadOnly();
@@ -151,7 +153,11 @@ public sealed class Complaint : AuditableEntity
         Touch();
     }
 
-    public ComplaintStatusHistory ChangeStatus(ComplaintStatus newStatus, Guid changedByUserId, string? note = null)
+    public ComplaintStatusHistory ChangeStatus(
+        ComplaintStatus newStatus,
+        Guid changedByUserId,
+        string? note = null,
+        bool isVisibleToCitizen = true)
     {
         Guard.AgainstEmpty(changedByUserId, nameof(changedByUserId));
 
@@ -163,7 +169,16 @@ public sealed class Complaint : AuditableEntity
         var previousStatus = Status;
         Status = newStatus;
 
-        var history = ComplaintStatusHistory.Create(Id, previousStatus, newStatus, changedByUserId, note);
+        if (newStatus is ComplaintStatus.Resolved or ComplaintStatus.Closed)
+        {
+            ClosedAt = DateTimeOffset.UtcNow;
+        }
+        else
+        {
+            ClosedAt = null;
+        }
+
+        var history = ComplaintStatusHistory.Create(Id, previousStatus, newStatus, changedByUserId, note, isVisibleToCitizen);
         _statusHistories.Add(history);
 
         Touch();

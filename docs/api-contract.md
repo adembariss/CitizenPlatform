@@ -155,3 +155,15 @@ GET /api/public/municipalities/resolve?lat=41.05&lng=29.0
 ```
 
 Returns a standard `ApiResponse<MunicipalityResolveResult>`.
+
+## Auth and Admin API
+
+Authentication (`POST /api/auth/login`, `GET /api/auth/me`) and the belediye admin panel endpoints
+(`GET/PUT /api/admin/complaints/...`, `GET /api/admin/dashboard/summary`,
+`GET/POST/PUT /api/admin/categories`, `GET/POST/PUT /api/admin/departments`) are documented in
+detail in `docs/auth.md` and `docs/admin-api.md` — not duplicated here to avoid drift between two
+copies of the same contract.
+
+Endpoints that are referenced elsewhere in project docs but are **not implemented yet**:
+
+- `GET /api/public/complaints/track/{trackingCode}` (public tracking by tracking code)

@@ -19,4 +19,28 @@ public sealed class DepartmentRepository : IDepartmentRepository
             department => department.Id == id,
             cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Department>> ListAsync(Guid? municipalityId, CancellationToken cancellationToken)
+    {
+        var query = _dbContext.Departments.AsQueryable();
+
+        if (municipalityId is not null)
+        {
+            query = query.Where(department => department.MunicipalityId == municipalityId);
+        }
+
+        return await query.OrderBy(department => department.Name).ToListAsync(cancellationToken);
+    }
+
+    public async Task<bool> CodeExistsAsync(Guid municipalityId, string code, CancellationToken cancellationToken)
+    {
+        return await _dbContext.Departments.AnyAsync(
+            department => department.MunicipalityId == municipalityId && department.Code == code,
+            cancellationToken);
+    }
+
+    public async Task AddAsync(Department department, CancellationToken cancellationToken)
+    {
+        await _dbContext.Departments.AddAsync(department, cancellationToken);
+    }
 }

@@ -1,13 +1,16 @@
+using CitizenPlatform.Api.Extensions;
 using CitizenPlatform.Application.Common.Models;
 using CitizenPlatform.Application.DTOs;
 using CitizenPlatform.Application.Features.Complaints;
 using CitizenPlatform.Api.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CitizenPlatform.Api.Controllers;
 
 [ApiController]
 [Route("api/public/complaints")]
+[EnableRateLimiting(RateLimitingPolicyNames.PublicWrite)]
 public sealed class PublicComplaintsController : ControllerBase
 {
     private readonly CreateComplaintCommandHandler _createComplaintHandler;

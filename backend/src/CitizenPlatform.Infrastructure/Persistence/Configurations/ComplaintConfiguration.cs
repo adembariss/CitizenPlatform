@@ -119,6 +119,10 @@ internal sealed class ComplaintConfiguration : IEntityTypeConfiguration<Complain
             .HasColumnName("synced_at")
             .HasColumnType("timestamp with time zone");
 
+        builder.Property(entity => entity.ClosedAt)
+            .HasColumnName("closed_at")
+            .HasColumnType("timestamp with time zone");
+
         builder.HasIndex(entity => entity.TrackingCode)
             .IsUnique()
             .HasDatabaseName("ux_complaints_tracking_code");

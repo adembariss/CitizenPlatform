@@ -217,6 +217,24 @@ public sealed class OutboxProcessingServiceTests
             return Task.FromResult(Result<MunicipalityComplaintWriteResult>.Success(
                 new MunicipalityComplaintWriteResult(wasInserted)));
         }
+
+        public Task<Result<MunicipalityComplaintWriteResult>> WriteComplaintStatusChangedAsync(
+            MunicipalityDatabaseConnectionInfo connectionInfo,
+            ComplaintStatusChangedPayload payload,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result<MunicipalityComplaintWriteResult>.Success(
+                new MunicipalityComplaintWriteResult(true)));
+        }
+
+        public Task<Result<MunicipalityComplaintWriteResult>> WriteComplaintAssignedAsync(
+            MunicipalityDatabaseConnectionInfo connectionInfo,
+            ComplaintAssignedPayload payload,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result<MunicipalityComplaintWriteResult>.Success(
+                new MunicipalityComplaintWriteResult(true)));
+        }
     }
 
     private sealed class FakeDateTimeProvider : IDateTimeProvider

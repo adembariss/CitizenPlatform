@@ -83,10 +83,14 @@ docker-compose.yml
 - Domain katmanı dış framework ve altyapı bağımlılığı almaz.
 - Infrastructure ve Integrations katmanları şimdilik adaptör sınırlarını ve konfigürasyon modellerini içerir.
 - Domain ve veritabanı model özeti için `docs/database-design.md` dosyasına bakın.
+- Auth (JWT login, roller, policy'ler, development demo kullanıcılar) için `docs/auth.md` dosyasına bakın.
+- Belediye yönetim paneli admin API'leri için `docs/admin-api.md` dosyasına bakın.
+- Şikayet yaşam döngüsü ve outbox senkronizasyonu için `docs/complaint-flow.md` dosyasına bakın.
 - Projenin güncel durumu, build/test sonuçları ve öncelikli eksikler için `docs/project-status.md` dosyasına bakın.
 
 ## Geliştirme Notları
 
 - Secret değerleri repoya eklemeyin.
 - Gerçek ortam değerlerini `.env` veya deployment secret yönetimi üzerinden verin.
-- EF Core migrationları ve PostGIS modellemeleri bir sonraki fazda `Infrastructure/Persistence` altında genişletilecek.
+- `JWT__SECRET` development placeholder'ı prod'da mutlaka değiştirilmeli (bkz. `docs/auth.md`).
+- EF Core migrationları ve PostGIS modellemeleri `Infrastructure/Persistence/Migrations` altında genişlemeye devam ediyor.

@@ -1,12 +1,15 @@
+using CitizenPlatform.Api.Extensions;
 using CitizenPlatform.Application.Abstractions;
 using CitizenPlatform.Application.Common.Models;
 using CitizenPlatform.Application.DTOs;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CitizenPlatform.Api.Controllers;
 
 [ApiController]
 [Route("api/public/municipalities")]
+[EnableRateLimiting(RateLimitingPolicyNames.PublicWrite)]
 public sealed class PublicMunicipalitiesController : ControllerBase
 {
     private readonly IGeoMunicipalityResolver _geoMunicipalityResolver;

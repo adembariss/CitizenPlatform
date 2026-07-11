@@ -26,6 +26,8 @@ public sealed class User : AuditableEntity
 
     public bool IsActive { get; private set; }
 
+    public string? PasswordHash { get; private set; }
+
     public static User Create(string email, string displayName, UserType userType)
     {
         return new User(Guid.NewGuid(), email, displayName, userType);
@@ -34,6 +36,12 @@ public sealed class User : AuditableEntity
     public void Deactivate()
     {
         IsActive = false;
+        Touch();
+    }
+
+    public void SetPasswordHash(string passwordHash)
+    {
+        PasswordHash = Guard.AgainstEmpty(passwordHash, nameof(passwordHash), 500);
         Touch();
     }
 }

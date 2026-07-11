@@ -33,6 +33,11 @@ internal sealed class ComplaintStatusHistoryConfiguration : IEntityTypeConfigura
             .HasColumnName("note")
             .HasMaxLength(4000);
 
+        builder.Property(entity => entity.IsVisibleToCitizen)
+            .HasColumnName("is_visible_to_citizen")
+            .HasDefaultValue(true)
+            .IsRequired();
+
         builder.HasIndex(entity => new { entity.ComplaintId, entity.CreatedAt });
 
         builder.HasOne<User>()

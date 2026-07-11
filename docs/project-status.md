@@ -1,144 +1,134 @@
 # CitizenPlatform Project Status
 
-_Son güncelleme: 2026-07-12_
-_Doğrulanan commit: `52f9f41` (main, "Add outbox based municipality sync worker")_
+_Son güncelleme: 2026-07-12 (Aşama 7 — Auth + Belediye Yönetim Paneli Backend API'leri)_
+_Önceki doğrulama: commit `52f9f41` (main, "Add outbox based municipality sync worker")_
 
 ## 1. Genel Durum
 
-Proje **erken iskelet (early scaffold) aşamasında**. Backend tarafı beklenenden daha olgun: Clean Architecture katmanları gerçek anlamda ayrılmış, tek bir uçtan uca akış (vatandaş şikayeti oluşturma → outbox → belediye DB'sine senkronizasyon) gerçekten çalışır durumda ve test edilmiş. Buna karşılık kimlik doğrulama, belediye admin paneli API'leri, takip sorgulama endpoint'i ve üç frontend uygulamasının hiçbiri henüz gerçek işlevsellik içermiyor — sadece statik/mock arayüz iskeletleri var.
+Backend artık **auth + belediye admin API'leri dahil olmak üzere** anlamlı ölçüde olgun: JWT tabanlı kimlik doğrulama, rol/tenant bazlı yetkilendirme, şikayet yönetimi (liste/detay/durum/atama/yorum/geçmiş), dashboard özet API'si ve kategori/birim yönetimi eklendi — hepsi Clean Architecture katmanlarına uygun, outbox pattern korunarak (dual-write yok) ve test edilmiş durumda.
 
-Kısaca: **"Vatandaş şikayet gönderir" akışının ilk %60'ı (backend tarafı) sağlam, geri kalan her şey (auth, admin, tracking, frontend entegrasyonu) henüz yok.**
+Buna karşılık üç frontend uygulaması (admin-web, citizen-web, citizen-mobile) hâlâ statik/mock; public tracking endpoint'i, docker-compose init-mount düzeltmesi ve refresh token akışı hâlâ yapılmadı.
+
+Kısaca: **Backend'in "vatandaş şikayet gönderir" + "belediye çalışanı yönetir" akışlarının ikisi de artık gerçek ve test edilmiş durumda. Kalan büyük boşluk: frontend entegrasyonu, public tracking, docker-compose düzeltmesi.**
 
 ## 2. Build/Test Durumu
-
-Bu bilgisayarda ortam eksikleri tespit edildi ve kullanıcı onayıyla tamamlandı:
-
-- `global.json` .NET SDK `8.0.404` istiyordu, makinede sadece `8.0.119` ve `9.0.304` kuruluydu (feature-band uyuşmazlığı yüzünden roll-forward çalışmadı). **winget ile `Microsoft.DotNet.SDK.8` (8.0.422) kuruldu.**
-- Docker Desktop bu makinede kurulu değil. Kullanıcı onayı ile kurulum **atlandı**; `docker-compose.yml` bu yüzden `docker compose config` ile değil, manuel dosya incelemesiyle doğrulandı (bkz. bölüm 6 ve 11).
 
 | Komut | Sonuç |
 |---|---|
 | `dotnet restore backend/CitizenPlatform.sln` | ✅ Başarılı |
 | `dotnet build backend/CitizenPlatform.sln` | ✅ Başarılı — 0 uyarı, 0 hata |
-| `dotnet test backend/CitizenPlatform.sln` | ✅ Başarılı — 24/24 test geçti (23 unit + 1 integration) |
-| `npm install` (repo kökü, workspaces) | ✅ Başarılı — 1141 paket (28 audit uyarısı, hepsi transitive dev-dependency, kritik değil) |
-| `npm run build:web` | ✅ Başarılı — hem `admin-web` hem `citizen-web` `tsc -b && vite build` ile derlendi |
-| `docker compose config` | ⚠️ **Çalıştırılamadı** — Docker bu makinede kurulu değil, kullanıcı kurulumu istemedi. `docker-compose.yml` manuel incelendi (syntax olarak geçerli görünüyor). |
-| `npm --workspace @citizen-platform/citizen-mobile run typecheck` | ⚠️ **Script yok** — `apps/citizen-mobile/package.json` içinde `typecheck` script'i tanımlı değil (sadece `start`, `android`, `ios`, `web` var). Not edildi, işi durdurmadı. |
+| `dotnet test backend/CitizenPlatform.sln` | ✅ Başarılı — **70/70 test geçti** (64 unit + 6 integration; önceki aşamada 24 test vardı) |
+| `npm run build:web` | ✅ Başarılı — hem `admin-web` hem `citizen-web` derleniyor (bu aşamada frontend'e dokunulmadı) |
+| `docker compose config` | ⚠️ Bu makinede Docker kurulu değil, önceki aşamadaki gibi çalıştırılamadı; bu tur da düzeltilmedi (bkz. bölüm 13). |
 
-Build'i bozan kod hatası **bulunamadı** — bu yüzden bu turda kod değişikliği yapılmadı.
+Yeni JWT paketleri (`Microsoft.AspNetCore.Authentication.JwtBearer`, `System.IdentityModel.Tokens.Jwt`) `Directory.Packages.props`'a eklendi ve restore ile doğrulandı. Yeni EF Core migration (`AddAuthAndAdminComplaintFields`) `dotnet ef migrations add` ile üretildi; `users.password_hash`, `complaints.closed_at`, `complaint_status_histories.is_visible_to_citizen` kolonlarını ekliyor.
 
 ## 3. Çalışan Kısımlar
 
-Gerçekten uçtan uca çalışan (test edilmiş) akış:
+Önceki aşamadaki akışlara ek olarak, bu aşamada eklenip test edilenler:
 
-- **Konumdan belediye tespiti**: `GET /api/public/municipalities/resolve?lat=&lng=` → `GeoMunicipalityResolver` → PostGIS `ST_Contains` sorgusu (`GeoMunicipalityResolverTests` ile test edilmiş).
-- **Şikayet oluşturma (JSON + multipart)**: `POST /api/public/complaints` → validation (FluentValidation) → belediye tespiti → kategori/departman kural çözümü → `Complaint` aggregate oluşturma → dosya yükleme → **tek transaction içinde** complaint + outbox mesajı yazma (`CreateComplaintCommandHandlerTests` ile test edilmiş, dual-write yapılmıyor — bkz. bölüm 7).
-- **Ek fotoğraf yükleme**: `POST /api/public/complaints/{trackingCode}/attachments`.
-- **Dosya güvenliği**: content-type + dosya imzası kontrolü, rastgele dosya adı, SHA256 hash, `wwwroot` dışında saklama (`LocalFileStorageServiceTests` ile test edilmiş).
-- **Outbox işleme**: `OutboxProcessingService` + Worker'daki `OutboxProcessorService` — retry, exponential backoff, `MaxRetryCount` sonrası `Failed` durumu (`OutboxProcessingServiceTests` ile test edilmiş).
-- **Belediye DB'sine idempotent yazım**: `PostgreSqlMunicipalityComplaintWriter` — `ON CONFLICT (main_complaint_id) DO NOTHING` ile aynı mesaj tekrar işlense bile duplicate oluşmuyor.
-- **Domain modeli**: `Complaint` aggregate, status geçmişi, atama, yorum, soft delete, audit alanları (`ComplaintTests`, `GeoCoordinateTests` ile test edilmiş).
-- **Sağlık kontrolü**: `GET /api/health` ve `/health` (DB health check ile).
+- **Login**: `POST /api/auth/login` — email/şifre doğrulama (PBKDF2-HMACSHA256 hash), başarısızlıkta genel "Invalid email or password." mesajı (hangi alan yanlış sızdırılmıyor), başarıda JWT access token + kullanıcı bilgisi.
+- **Mevcut kullanıcı**: `GET /api/auth/me` — token'daki `sub` claim'inden kullanıcıyı, rollerini ve belediyesini döner.
+- **JWT authentication + authorization policy'leri**: `RequireSystemAdmin`, `RequireMunicipalityAdmin`, `RequireMunicipalityEmployee`, `RequireAdminAccess` — gerçek `IAuthorizationService` ile test edilmiş (bkz. `AdminAuthorizationPolicyTests`), Citizen rolü hiçbirini geçemiyor.
+- **Tenant scope**: `TenantScope` merkezi yardımcı sınıfı — SystemAdmin her belediyeyi görebiliyor/filtreleyebiliyor, MunicipalityAdmin/Employee her zaman kendi belediyesine kilitleniyor (request'teki farklı `municipalityId` yok sayılıyor).
+- **Admin complaint yönetimi**: liste (filtre + sayfalama + arama, maskelenmiş vatandaş adı), detay (maskelenmemiş, tenant-scoped), durum güncelleme (`Complaint.ChangeStatus`, aynı statüye geçiş 400 döner, Resolved/Closed'da `closedAt` set edilir), birime atama (`Complaint.AssignToDepartment`, başka belediyenin birimine atama engelleniyor), admin yorumu (`Complaint.AddComment`, internal/public ayrımı korunuyor), geçmiş (status + yorum + atama, iç notlar dahil — sadece admin görür).
+- **Dashboard özet API'si**: toplam/açık/bugünkü/çözülen/kapanan sayılar, ortalama çözüm süresi, status/kategori/departman bazlı kırılım — tenant-scoped, N+1 sorgu yok.
+- **Kategori/Birim yönetimi**: liste (tüm admin rolleri), oluşturma/güncelleme (sadece MunicipalityAdmin/SystemAdmin), silme yerine `isActive` toggle.
+- **Outbox genişletildi**: `ComplaintStatusChanged` ve `ComplaintAssigned` mesajları artık worker tarafında gerçekten belediye sample DB'sine yazılıyor (idempotent, `municipal_complaints`/`municipal_complaint_status_logs` günceller); karşılık gelen kayıt henüz senkronize olmadıysa retry ediliyor. `AdminCommentAdded` mesajı bilinçli olarak no-op tamamlanıyor (sample DB'de yorum tablosu yok — bkz. `docs/complaint-flow.md`).
+- **CORS + rate limiting**: `CORS__ALLOWED_ORIGINS` ile konfigüre edilebilir CORS policy; login (`5/dakika`) ve public complaint/resolve endpointleri (`30/dakika`) için fixed-window rate limiting.
+- **Development demo kullanıcı seed'i**: sadece `Development` ortamında, Demo Belediyesi mevcutsa `systemadmin@demo.local` / `admin@demo.local` / `employee@demo.local` (şifre: `Demo123!`) oluşturuluyor; municipality seed'i yoksa uyarı loglayıp atlıyor (API'yi çökertmiyor).
+
+Önceki aşamadan değişmeden çalışmaya devam eden: konumdan belediye tespiti, şikayet oluşturma (JSON/multipart), dosya yükleme/güvenliği, `ComplaintCreated` outbox akışı, sağlık kontrolü.
 
 ## 4. Dokümante Edilmiş Ama Kodda Eksik Kısımlar
 
-`docs/api-contract.md` sadece 3 endpoint'i dokümante ediyor (Create Complaint JSON/multipart, Add Attachments, Resolve Municipality) ve bunların **hepsi kodda mevcut** — bu üçü için doküman/kod arasında tutarsızlık yok.
+`docs/api-contract.md` artık auth/admin API'lerini `docs/auth.md` ve `docs/admin-api.md`'ye işaret ediyor (tekrar/duplikasyon yok). Kod ile doküman arasında bilinen tek fark:
 
-Ancak kullanıcı talimatındaki kontrol listesindeki şu üç endpoint **ne dokümanda ne kodda** bulunuyor (yani bunlar henüz roadmap/vizyon seviyesinde, spesifikasyonu bile yazılmamış):
-
-| Endpoint | Kodda var mı? | `docs/api-contract.md`'de var mı? |
+| Endpoint | Kodda var mı? | Dokümante mi? |
 |---|---|---|
-| `GET /api/public/municipalities/resolve?lat=&lng=` | ✅ Var | ✅ Var |
-| `POST /api/public/complaints` (JSON) | ✅ Var | ✅ Var |
-| `POST /api/public/complaints` (multipart/form-data) | ✅ Var | ✅ Var |
-| `POST /api/public/complaints/{trackingCode}/attachments` | ✅ Var | ✅ Var |
-| `GET /api/public/complaints/track/{trackingCode}` | ❌ **Yok** | ❌ Yok |
-| `POST /api/auth/login` | ❌ **Yok** | ❌ Yok |
-| `GET /api/admin/complaints` | ❌ **Yok** | ❌ Yok |
+| `POST /api/auth/login` | ✅ Var | ✅ `docs/auth.md` |
+| `GET /api/auth/me` | ✅ Var | ✅ `docs/auth.md` |
+| `GET/PUT /api/admin/complaints/...` | ✅ Var | ✅ `docs/admin-api.md` |
+| `GET /api/admin/dashboard/summary` | ✅ Var | ✅ `docs/admin-api.md` |
+| `GET/POST/PUT /api/admin/categories`, `/departments` | ✅ Var | ✅ `docs/admin-api.md` |
+| `GET /api/public/complaints/track/{trackingCode}` | ❌ **Hâlâ yok** | ❌ Hâlâ yok |
 
-`Controllers/` klasöründe toplam 3 controller var: `HealthController`, `PublicComplaintsController`, `PublicMunicipalitiesController`. Auth veya Admin controller'ı hiç yok.
-
-Ayrıca: `CitizenPlatform.Application/Features/Complaints/SubmitComplaintCommand.cs` tanımlı ama hiçbir handler veya controller tarafından kullanılmıyor — muhtemelen `CreateComplaintCommand`'ın öncül/yetim (orphan) taslağı. Fonksiyonel bir zarar vermiyor, silinmesi düşünülebilir.
+`SubmitComplaintCommand.cs` hâlâ kullanılmayan/yetim dosya olarak duruyor (önceki aşamadan, bu turda dokunulmadı).
 
 ## 5. Backend Durumu
 
-- **Api**: Sadece public complaint/municipality/health endpoint'leri. Auth, admin, CORS policy, rate limiting tanımlı değil. `GlobalExceptionMiddleware` standart `ApiResponse` formatında hata dönüyor, dev ortamında exception mesajını gösteriyor (prod'da genel mesaj). `TreatWarningsAsErrors=false` (README ile tutarlı).
-- **Application**: Use case'ler (Create/AddAttachments), DTO'lar, FluentValidation validator'ları, outbox işleme servisi, port arayüzleri (repository/storage/geospatial abstraction'ları) düzgün ayrılmış.
-- **Domain**: Framework bağımsız. `Complaint` aggregate factory metotlarıyla (`Create`, `ChangeStatus`, `AssignToDepartment`, `AddComment`, `AddAttachment`) korunuyor. `AuditableEntity` soft-delete + audit alanlarını yönetiyor.
-- **Infrastructure**: EF Core + Npgsql + NetTopologySuite persistence, PostGIS boundary lookup, local file storage, EXIF okuyucu, tracking code üretici. `CurrentUserService` **hardcoded stub** (`UserId => null`, `IsAuthenticated => false`) — auth entegrasyonu henüz yok.
-- **Integrations**: `PostgreSqlMunicipalityComplaintWriter` gerçek, idempotent bir yazıcı (placeholder değil).
-- **Worker**: `OutboxProcessorService` (BackgroundService) gerçek polling/retry/backoff mantığına sahip, placeholder değil.
+- **Api**: `AuthController`, `AdminComplaintsController`, `AdminDashboardController`, `AdminCategoriesController`, `AdminDepartmentsController` eklendi. JWT bearer authentication, authorization policy'leri (`Api/Authorization/AuthorizationPolicySetup.cs` — hem gerçek uygulama hem testler aynı tanımı kullanıyor), CORS, rate limiting `ServiceCollectionExtensions`/`Program.cs` içinde wiring edildi. Controller'lar ince kalıyor — business logic Application handler'larında.
+- **Application**: `Features/Auth`, `Features/AdminComplaints`, `Features/AdminDashboard`, `Features/AdminCategories`, `Features/AdminDepartments` eklendi. `TenantScope` (Common) merkezi scoping sağlıyor. `AdminScopedResult<T>` yeni bir Result varyantı — 404 (tenant dışı/yok) ile 400 (validasyon) arasında controller'ın doğru HTTP kodunu seçebilmesi için.
+- **Domain**: `User.PasswordHash` + `SetPasswordHash`, `ComplaintStatusHistory.IsVisibleToCitizen`, `Complaint.ClosedAt` (Resolved/Closed'da otomatik set), `ComplaintCategory`/`Department` için `Rename`/`Activate`/`Deactivate` eklendi. Hepsi domain metotları üzerinden değiştiriliyor, dışarıdan doğrudan alan ataması yok.
+- **Infrastructure**: `PasswordHasher` (PBKDF2), `JwtTokenService`, gerçek `CurrentUserService` (artık `IHttpContextAccessor` + JWT claim'lerinden okuyor — **stub kaldırıldı**), `UserRepository`, `MunicipalityRepository`, `AdminComplaintQueryRepository` (join'li, N+1'siz), `AdminDashboardRepository`, `DevelopmentDataSeeder`.
+- **Integrations**: `PostgreSqlMunicipalityComplaintWriter` iki yeni metotla genişledi (`WriteComplaintStatusChangedAsync`, `WriteComplaintAssignedAsync`), her ikisi de idempotent ve "henüz senkronize olmamış kayıt" durumunu retry'a bırakıyor.
+- **Worker**: `OutboxProcessingService.DispatchAsync` artık mesaj tipine göre yönlendiriyor (`ComplaintCreated`/`ComplaintStatusChanged`/`ComplaintAssigned`/`AdminCommentAdded`), placeholder değil.
 
 ## 6. Database Durumu
 
-- **Migration**: 3 EF Core migration mevcut (`InitialCreate`, `AddComplaintCreationFields`, `AddComplaintAttachmentFileMetadata`), `CitizenPlatformDbContextModelSnapshot.cs` güncel görünüyor.
-- **Seed**: `database/main-db/003_seed_demo_municipality.sql` demo belediye/kategori/birim verisi ekliyor. `database/seed/` klasörü **boş** (sadece README) — kullanılmıyor.
-- **PostGIS**: `database/main-db/001_enable_postgis.sql` extension'ı açıyor; `municipality_boundaries.boundary_geometry` (MultiPolygon) ve `complaints.location_geometry` (Point) GIST index'li olarak tasarlanmış, dokümanla kod tutarlı.
-- **Main DB**: Şema EF migrationlarından geliyor, manuel scriptler (`001`–`003`) migration sonrası çalıştırılmak üzere tasarlanmış.
-- **Municipality sample DB**: `database/municipality-sample-db/001_create_complaint_sync_tables.sql` — `municipal_complaints` ve `municipal_complaint_status_logs` tabloları, `main_complaint_id` üzerinde unique index (idempotency'nin temeli).
-- **⚠️ Docker Compose init mount hatası (build'i bozmuyor ama fonksiyonel bir eksiklik)**: `docker-compose.yml` içinde `main-db` servisi init script dizini olarak `./database/seed` klasörünü mount ediyor — ama bu klasör boş. Asıl PostGIS/index/seed scriptleri (`001_enable_postgis.sql`, `002_indexes.sql`, `003_seed_demo_municipality.sql`) `./database/main-db` altında ve **hiç mount edilmiyor**, yani `docker compose up` sonrası container ilk açılışta bu scriptleri otomatik çalıştırmayacak. Ayrıca `municipality-sample-db` servisinde **hiç init volume mount'u yok**, `001_create_complaint_sync_tables.sql` da otomatik çalışmayacak. Bu, ilk kurulumda "veritabanı boş/PostGIS kapalı" sürprizine yol açar. Bu bir docker-compose/dosya-yolu düzeltmesi olduğu için (ve `dotnet build`/`dotnet test`/`npm run build:web` gibi build'i bozmadığı için) bu turda dokunulmadı; öncelikli eksikler listesinde işaretlendi.
+- **Migration**: Yeni migration `AddAuthAndAdminComplaintFields` eklendi (toplam 4 migration). `users.password_hash` (nullable), `complaints.closed_at` (nullable), `complaint_status_histories.is_visible_to_citizen` (not null, default true).
+- **Seed**: Değişmedi — `database/main-db/003_seed_demo_municipality.sql` demo belediye verisini sağlıyor; `DevelopmentDataSeeder` bunun üstüne demo kullanıcı/rol ekliyor (uygulama içi, SQL değil).
+- **Municipality sample DB**: Şema değişmedi (`municipal_complaints`, `municipal_complaint_status_logs`) — yeni outbox writer metotları mevcut kolonları (`status`, `department_name`) güncelliyor, yeni migration gerekmedi.
+- **⚠️ Docker Compose init mount hatası**: Önceki aşamada tespit edildi, **bu turda hâlâ düzeltilmedi** (görev talimatı gereği — "Docker compose düzeltmesini sonra yapacağız"). Detay: bölüm 13.
+- Bu makinede Docker olmadığı için yeni migration gerçek bir Postgres'e **uygulanamadı**; migration dosyası `dotnet ef migrations add` ile üretildi ve `dotnet build` ile derleme doğrulaması yapıldı, ama `dotnet ef database update` çalıştırılmadı.
 
 ## 7. Outbox / Worker Durumu
 
-**Gerçek çalışıyor, placeholder değil.** Doğrulama:
+**Genişledi, hâlâ gerçek çalışıyor.** `ComplaintCreated`'a ek olarak:
 
-- `CreateComplaintCommandHandler.HandleAsync` → `_unitOfWork.ExecuteInTransactionAsync(...)` içinde hem `_complaintRepository.AddAsync` hem `_integrationOutboxRepository.AddAsync` çağrılıyor → **aynı transaction, dual-write yok**, mimari kurallara (bkz. görev tanımındaki madde 1-2) uygun.
-- `OutboxProcessingService.ProcessDueMessagesAsync` → due mesajları okuyor, `Processing` durumuna alıyor, `IntegrationAttempt` kaydı açıyor, ilgili `MunicipalityDatabaseConnection`'ı çözüyor, `IMunicipalityComplaintWriter`'ı provider'a göre seçiyor.
-- Hata durumunda: `attempt.Fail(...)`, `AttemptCount >= MaxRetryCount` ise `Failed`, değilse exponential backoff ile `next_retry_at` (`CalculateNextRetryAt`) atanarak `Pending`'e geri dönüyor.
-- `OutboxProcessorService` (Worker `BackgroundService`) periyodik polling yapıyor (`PollIntervalSeconds`, varsayılan 10sn), exception'ları yutup logluyor, servis çökmüyor.
-- Belediye tarafı yazım idempotent: `ON CONFLICT (main_complaint_id) DO NOTHING`.
-- Unit testlerle kapsanmış (`OutboxProcessingServiceTests`).
+- `ComplaintStatusChanged` → belediye DB'sindeki `municipal_complaints.status` günceller + `municipal_complaint_status_logs`'a idempotent kayıt ekler (`ON CONFLICT (main_complaint_id, status) DO NOTHING`). Karşılık gelen `municipal_complaints` kaydı yoksa (`ComplaintCreated` henüz işlenmemişse) `Result.Failure` döner → outbox `Pending`'e geri döner, retry edilir. Veri kaybı yok.
+- `ComplaintAssigned` → `municipal_complaints.department_name` günceller, aynı "henüz yok, retry et" garantisi.
+- `AdminCommentAdded` → sample DB şemasında yorum tablosu olmadığı için `OutboxProcessingService.DispatchAsync` bu tipi doğrudan `Result.Success()` ile tamamlıyor (dış sisteme yazma yok, bilinçli tasarım kararı).
+
+`OutboxProcessingServiceTests` mevcut testleri (yeni interface metotlarına uyum sağlandı) hâlâ geçiyor; yeni mesaj tiplerinin worker dispatch mantığı `docs/complaint-flow.md` içinde belgelendi.
 
 ## 8. Admin Web Durumu
 
-**Mock/statik.** `apps/admin-web/src/App.tsx` — hardcoded metrik kartları (`Açık bildirim: 128`, `Bugün gelen: 34`, `SLA riski: 7`) ve statik tablo satırları. Hiçbir API çağrısı, routing, state management veya auth akışı yok. `vite build` başarıyla derleniyor çünkü sadece statik JSX render ediyor.
+**Değişmedi — hâlâ mock/statik.** Bu aşamada frontend'e dokunulmadı (görev kapsamı backend'di). Şimdi gerçek bir backend API'si var (auth + complaint CRUD + dashboard), bir sonraki aşamada admin-web bu API'lere bağlanabilir.
 
 ## 9. Citizen Web Durumu
 
-**Mock/statik.** `apps/citizen-web/src/App.tsx` — statik form (başlık/açıklama input'ları, "Konum seçimi" placeholder div'i, "Bildirim oluştur" butonu `type="button"` ve **onClick handler'ı yok**). Harita entegrasyonu (Leaflet/MapLibre) yok. API'ye hiç bağlı değil.
+**Değişmedi — hâlâ mock/statik.**
 
 ## 10. Citizen Mobile Durumu
 
-**Mock/statik.** `App.tsx` → `HomeScreen.tsx` — statik `TextInput`/`TouchableOpacity`, gönder butonunun `onPress` handler'ı yok. `src/services/location/LocationProvider.ts` sadece bir **arayüz** (`LocationProvider` interface + `Coordinates` type) — gerçek Expo `expo-location` implementasyonu yok, `package.json`'da `expo-location` veya `expo-image-picker` bağımlılığı da yok. `typecheck` script'i tanımlı değil (bkz. bölüm 2).
+**Değişmedi — hâlâ mock/statik.**
 
 ## 11. Güvenlik Riskleri
 
-- **Secret**: `.env.example` sadece placeholder/`change-me-local` değerleri içeriyor, `.gitignore` `.env` ve `.env.*`'i (`.env.example` hariç) doğru şekilde dışlıyor. Gerçek secret repoya sızmamış. ✅
-- **Public data leak**: Şu an sadece "create" ve "resolve" endpoint'leri var; iç not (`isInternal`) veya vatandaşa görünmeyen geçmiş (`isVisibleToCitizen=false`) döndüren bir public tracking endpoint'i **henüz yok** — yani bu risk bugün için gerçekleşmiyor, ama `GET /api/public/complaints/track/{trackingCode}` eklendiğinde `docs/security.md`'deki KVKK/maskeleme kurallarına uyulması kritik olacak (henüz kod yok, doğrulanacak bir şey de yok).
-- **File upload**: Content-type + dosya imzası kontrolü, boyut limiti (10MB/dosya, 50MB request body), rastgele dosya adı, path traversal koruması, SHA256 hash — hepsi mevcut ve dokümanla eşleşiyor. `IFileSafetyScanner` şu an `NoOpFileSafetyScanner` (antivirüs taraması yok) — `docs/security.md` bunu zaten "production öncesi eklenmeli" olarak işaretlemiş, tutarlı.
-- **Auth**: Sistemde **hiç kimlik doğrulama yok**. `CurrentUserService` hardcoded `IsAuthenticated => false` stub. `AddAuthentication`/JWT/`[Authorize]` backend'de hiçbir yerde kullanılmıyor. Bu aşamada risk değil (henüz korunması gereken admin endpoint'i yok) ama admin API'leri eklenmeden **önce** auth'un devreye girmesi şart.
-- **Rate limit / CORS**: `ServiceCollectionExtensions.cs` içinde rate limiting veya CORS policy kaydı yok. Public complaint oluşturma endpoint'i şu haliyle throttling olmadan herkese açık — spam/DoS riski (görev kapsamındaki "DoS saldırıları" kısıtı gereği bunu ben oluşturmuyorum, sadece mevcut kod tabanındaki eksikliği raporluyorum).
+- **Secret**: `.env.example`'a eklenen `JWT__SECRET` değeri de sadece placeholder (`change-me-local-development-secret-please-replace`), gerçek secret yazılmadı. `.gitignore` değişmedi, hâlâ doğru çalışıyor. ✅
+- **Şifreleme**: Şifreler PBKDF2-HMACSHA256 (100.000 iterasyon) ile hashleniyor, düz metin hiçbir zaman saklanmıyor. ✅
+- **Login enumeration**: Yanlış email ve yanlış şifre aynı genel mesajı (`Invalid email or password.`) döndürüyor — kullanıcı numaralandırma (user enumeration) riski azaltıldı. ✅
+- **Auth artık var**: Önceki aşamada "hiç auth yok" riski raporlanmıştı; şimdi JWT + policy'ler devrede, admin endpoint'leri korunuyor. Ancak **refresh token yok** — access token süresi dolunca kullanıcı yeniden login olmalı (bu fazda kabul edilebilir, ileride eklenecek).
+- **Rate limit + CORS eklendi**: Login (5/dk) ve public complaint/resolve (30/dk) endpointleri artık throttling altında; CORS origin listesi env'den geliyor. Bu basit fixed-window limitler; production'da daha sofistike bir çözüm (örn. Redis-backed distributed limiter) gerekebilir — şu an tek-instance deployment için yeterli.
+- **Public tracking henüz yok**: `docs/security.md`'deki iç not/maskeleme kuralları bu yüzden hâlâ test edilemiyor (kod yok).
+- **İç not sızıntısı riski — kontrol edildi**: Admin `history`/`detail` endpointleri iç notları (`isInternal=true`) döner ama bunlar `RequireAdminAccess` policy'si arkasında; public tarafa açık hiçbir endpoint bu veriyi döndürmüyor (public tracking eklenmediği için bu risk şu an gerçekleşmiyor).
 
 ## 12. Multi-Tenant Riskleri
 
-Şu an **admin/employee tarafı hiç kodda olmadığı için** multi-tenant izolasyon ihlali riski **aktif olarak test edilebilir durumda değil** — ama altyapı doğru kurulmuş:
+**Artık aktif olarak test ediliyor** (önceki aşamada "kod yok, test edilemiyor" durumundaydı):
 
-- `Complaint`, `MunicipalityBoundary`, `MunicipalityDatabaseConnection` gibi tüm tenant-scoped entity'ler `municipalityId` alanı taşıyor.
-- Belediye tespiti tamamen konum tabanlı (`ST_Contains`), EXIF'ten değil — mimari kurala (madde 3) uyuyor.
-- Belediye DB bağlantı bilgisi (`MunicipalityDatabaseConnection`) her belediye için ayrı çözümleniyor (`MunicipalityDatabaseConnectionResolver`).
-- **Eksik**: `MunicipalityEmployee`/`MunicipalityAdmin`/`SystemAdmin` rollerine göre veri filtreleme yapan hiçbir kod yok çünkü bu roller için henüz endpoint/controller/authorization policy yazılmamış. Admin API'leri eklendiğinde her sorgunun `municipalityId` ile scope edildiğinin (ve `SystemAdmin` dışında hiçbir rolün bunu bypass edemediğinin) test edilmesi gerekecek.
+- `TenantScope.ResolveListFilter`: MunicipalityAdmin/Employee her zaman kendi `municipalityId`'sine kilitleniyor, request'teki farklı değer görmezden geliniyor — `TenantScopeTests`, `AdminComplaintListQueryHandlerTests` ile test edildi.
+- `TenantScope.CanAccess`: Detay/status/assign/comment handler'ları complaint'in `municipalityId`'sini scope ile karşılaştırıp uyuşmazsa **404** (403 değil — kayıt varlığı sızdırılmıyor) döndürüyor — `AdminComplaintDetailQueryHandlerTests`, `UpdateComplaintStatusCommandHandlerTests`, `AssignComplaintCommandHandlerTests`, `AddAdminCommentCommandHandlerTests` ile test edildi.
+- **Department cross-tenant koruması**: `AssignComplaintCommandHandler` complaint'in belediyesiyle department'ın belediyesini karşılaştırıyor, uyuşmazsa 400 — test edildi (`AssignComplaintCommandHandlerTests.HandleAsync_WhenDepartmentBelongsToDifferentMunicipality_ReturnsFailureAndDoesNotAssign`).
+- **SystemAdmin bypass**: SystemAdmin tüm belediyeleri görebiliyor/yönetebiliyor — `TenantScopeTests`, `AdminComplaintListQueryHandlerTests.HandleAsync_WhenSystemAdminRequestsNoFilter_SearchesAllMunicipalities` ile test edildi.
+- **Authorization policy hiyerarşisi**: Citizen rolü hiçbir admin policy'sini geçemiyor, token olmadan (anonymous principal) hiçbir policy geçilemiyor — `AdminAuthorizationPolicyTests` ile gerçek `IAuthorizationService` üzerinden test edildi (framework mock'lanmadı).
 
 ## 13. Öncelikli Eksikler
 
-1. **Auth**: `POST /api/auth/login`, JWT/refresh token akışı, `[Authorize]` policy'leri, gerçek `ICurrentUserService` implementasyonu. Domain'de `User`/`Role`/`UserRole`/`RefreshToken` entity'leri zaten hazır, sadece API/Infrastructure tarafı yok.
-2. **Admin API'leri**: `GET /api/admin/complaints` ve ilgili liste/detay/atama/durum güncelleme/yorum endpoint'leri, `municipalityId` bazlı tenant filtreleme dahil.
-3. **Public tracking endpoint**: `GET /api/public/complaints/track/{trackingCode}` — `docs/security.md`'deki iç not/maskeleme kurallarına uygun şekilde.
-4. **Docker Compose init script mount hatası** (bölüm 6): `main-db` ve `municipality-sample-db` servislerinin init volume'larının doğru klasörlere (`./database/main-db`, `./database/municipality-sample-db`) işaret etmesi gerekiyor.
-5. **Frontend–API entegrasyonu**: Üç uygulamanın da (admin-web, citizen-web, citizen-mobile) gerçek API çağrılarına, routing'e ve state yönetimine bağlanması. Şu an hepsi statik mock.
-6. **Citizen mobile**: `expo-location` ve `expo-image-picker` entegrasyonu, `LocationProvider` interface'inin gerçek implementasyonu.
-7. **CORS + rate limiting**: Public endpoint'ler için en azından temel throttling.
-8. **`SubmitComplaintCommand.cs`**: Kullanılmayan/yetim dosyanın temizlenmesi (düşük öncelik, kozmetik).
+1. **Public tracking endpoint**: `GET /api/public/complaints/track/{trackingCode}` — `docs/security.md`'deki iç not/maskeleme kurallarına uygun şekilde. Artık `isVisibleToCitizen` alanı da domain'de mevcut, bu endpoint'i doğru filtrelemek için hazır.
+2. **Docker Compose init script mount hatası**: `main-db` ve `municipality-sample-db` servislerinin init volume'larının doğru klasörlere (`./database/main-db`, `./database/municipality-sample-db`) işaret etmesi gerekiyor. Bilinçli olarak bu turda da ertelendi (görev talimatı: "Docker compose düzeltmesini sonra yapacağız").
+3. **Frontend–API entegrasyonu**: admin-web artık gerçek bir auth + complaint + dashboard API'sine bağlanabilir; citizen-web/mobile gerçek API çağrılarına, routing'e ve state yönetimine bağlanmalı.
+4. **Refresh token**: Şu an sadece access token var (60 dk varsayılan ömür). `RefreshToken` domain entity'si hazır, akış yazılmadı.
+5. **Citizen mobile**: `expo-location`/`expo-image-picker` entegrasyonu.
+6. **Migration'ın gerçek DB'ye uygulanması**: Bu makinede Docker/Postgres olmadığı için `AddAuthAndAdminComplaintFields` migration'ı sadece derleme seviyesinde doğrulandı, gerçek veritabanına hiç uygulanmadı.
+7. **`SubmitComplaintCommand.cs`**: Hâlâ temizlenmedi (düşük öncelik).
 
 ## 14. Devam Planı
 
-Önerilen sıra (bir sonraki fazlar için, bu turda uygulanmadı):
-
-1. Auth altyapısını kur (JWT + login endpoint + `ICurrentUserService` gerçek implementasyonu) — admin API'lerinin ön koşulu.
-2. `GET /api/admin/complaints` ve temel admin akışını (liste, detay, atama, durum, iç not) tenant-scoped olarak ekle.
-3. `GET /api/public/complaints/track/{trackingCode}` endpoint'ini KVKK/maskeleme kurallarına uygun şekilde ekle.
-4. `docker-compose.yml` init mount yollarını düzelt, `docker compose config` + `docker compose up` ile gerçek ortamda doğrula (bu makinede Docker kurulursa).
-5. Citizen web'e harita (Leaflet/MapLibre) ve gerçek API entegrasyonu ekle.
-6. Citizen mobile'a `expo-location`/`expo-image-picker` ve gerçek API entegrasyonu ekle.
-7. Admin web'i gerçek API'ye bağla, auth akışını ekle.
-8. CORS policy + rate limiting ekle.
+1. `GET /api/public/complaints/track/{trackingCode}` endpoint'ini KVKK/maskeleme kurallarına uygun şekilde ekle.
+2. `docker-compose.yml` init mount yollarını düzelt, gerçek bir Postgres ortamında migration'ı uygula ve `docker compose config`/`up` ile doğrula.
+3. Admin web'i gerçek auth + admin API'lerine bağla (login sayfası, complaint listesi/detayı, dashboard).
+4. Citizen web'e harita (Leaflet/MapLibre) ve gerçek API entegrasyonu ekle (tracking endpoint'i eklendikten sonra).
+5. Citizen mobile'a `expo-location`/`expo-image-picker` ve gerçek API entegrasyonu ekle.
+6. Refresh token akışını ekle.

@@ -29,4 +29,22 @@ public sealed class Department : AuditableEntity
     {
         return new Department(Guid.NewGuid(), municipalityId, name, code);
     }
+
+    public void Rename(string name)
+    {
+        Name = Guard.AgainstEmpty(name, nameof(name), 200);
+        Touch();
+    }
+
+    public void Activate()
+    {
+        IsActive = true;
+        Touch();
+    }
+
+    public void Deactivate()
+    {
+        IsActive = false;
+        Touch();
+    }
 }

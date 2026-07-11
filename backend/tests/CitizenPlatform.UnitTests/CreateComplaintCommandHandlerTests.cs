@@ -190,6 +190,26 @@ public sealed class CreateComplaintCommandHandlerTests
 
             return Task.FromResult(category);
         }
+
+        public Task<ComplaintCategory?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<ComplaintCategory?>(null);
+        }
+
+        public Task<IReadOnlyList<ComplaintCategory>> ListAsync(Guid? municipalityId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IReadOnlyList<ComplaintCategory>>([]);
+        }
+
+        public Task<bool> CodeExistsAsync(Guid? municipalityId, string code, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(false);
+        }
+
+        public Task AddAsync(ComplaintCategory category, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakeCategoryDepartmentRuleRepository : ICategoryDepartmentRuleRepository
@@ -212,6 +232,21 @@ public sealed class CreateComplaintCommandHandlerTests
         {
             Department? department = Department.Create(MunicipalityId, "Fen Isleri", "FEN_ISLERI");
             return Task.FromResult<Department?>(department);
+        }
+
+        public Task<IReadOnlyList<Department>> ListAsync(Guid? municipalityId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IReadOnlyList<Department>>([]);
+        }
+
+        public Task<bool> CodeExistsAsync(Guid municipalityId, string code, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(false);
+        }
+
+        public Task AddAsync(Department department, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
         }
     }
 

@@ -3,6 +3,7 @@ using CitizenPlatform.Infrastructure.Geospatial;
 using CitizenPlatform.Infrastructure.Identity;
 using CitizenPlatform.Infrastructure.Persistence;
 using CitizenPlatform.Infrastructure.Persistence.Repositories;
+using CitizenPlatform.Infrastructure.Seeding;
 using CitizenPlatform.Infrastructure.Storage;
 using CitizenPlatform.Infrastructure.Time;
 using CitizenPlatform.Infrastructure.Tracking;
@@ -23,8 +24,12 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.Configure<ObjectStorageOptions>(configuration.GetSection(ObjectStorageOptions.SectionName));
 
+        services.AddHttpContextAccessor();
+        services.AddSingleton(JwtOptions.Resolve(configuration));
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
+        services.AddSingleton<IPasswordHasher, PasswordHasher>();
+        services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddScoped<IFileSafetyScanner, NoOpFileSafetyScanner>();
         services.AddScoped<IImageMetadataReader, ExifImageMetadataReader>();
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
@@ -40,6 +45,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IMunicipalityDatabaseConnectionResolver, MunicipalityDatabaseConnectionResolver>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<ITrackingCodeGenerator, TrackingCodeGenerator>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IMunicipalityRepository, MunicipalityRepository>();
+        services.AddScoped<IAdminComplaintQueryRepository, AdminComplaintQueryRepository>();
+        services.AddScoped<IAdminDashboardRepository, AdminDashboardRepository>();
+        services.AddScoped<DevelopmentDataSeeder>();
 
         return services;
     }

@@ -89,32 +89,17 @@ public sealed class OutboxProcessingService
         IntegrationOutboxMessage message,
         CancellationToken cancellationToken)
     {
-        if (!string.Equals(message.MessageType, "ComplaintCreated", StringComparison.Ordinal))
+        if (string.Equals(message.MessageType, "AdminCommentAdded", StringComparison.Ordinal))
         {
-            return Result.Failure($"Unsupported outbox message type: {message.MessageType}.");
+            // Admin comments (internal or citizen-visible) are not currently mirrored to
+            // municipality databases - the sample municipality schema has no comments table.
+            // The outbox message still exists so the main-DB write and audit trail stay
+            // consistent with the no-dual-write rule; there is simply nothing external to
+            // dispatch for this message type yet.
+            return Result.Success();
         }
 
-        MunicipalityComplaintCreatedPayload? payload;
-        try
-        {
-            payload = JsonSerializer.Deserialize<MunicipalityComplaintCreatedPayload>(
-                message.Payload,
-                JsonOptions);
-        }
-        catch (JsonException exception)
-        {
-            return Result.Failure($"Outbox payload is invalid JSON: {exception.Message}");
-        }
-
-        if (payload is null)
-        {
-            return Result.Failure("Outbox payload is empty.");
-        }
-
-        var connectionResult = await _connectionResolver.ResolveAsync(
-            message.MunicipalityId,
-            cancellationToken);
-
+        var connectionResult = await _connectionResolver.ResolveAsync(message.MunicipalityId, cancellationToken);
         if (!connectionResult.IsSuccess || connectionResult.Value is null)
         {
             return Result.Failure(connectionResult.Error ?? "Municipality database connection could not be resolved.");
@@ -126,14 +111,82 @@ public sealed class OutboxProcessingService
             return Result.Failure($"No municipality complaint writer is registered for {connectionResult.Value.Provider}.");
         }
 
-        var writeResult = await writer.WriteComplaintCreatedAsync(
-            connectionResult.Value,
-            payload,
-            cancellationToken);
+        return message.MessageType switch
+        {
+            "ComplaintCreated" => await DispatchComplaintCreatedAsync(writer, connectionResult.Value, message, cancellationToken),
+            "ComplaintStatusChanged" => await DispatchComplaintStatusChangedAsync(writer, connectionResult.Value, message, cancellationToken),
+            "ComplaintAssigned" => await DispatchComplaintAssignedAsync(writer, connectionResult.Value, message, cancellationToken),
+            _ => Result.Failure($"Unsupported outbox message type: {message.MessageType}.")
+        };
+    }
 
+    private static async Task<Result> DispatchComplaintCreatedAsync(
+        IMunicipalityComplaintWriter writer,
+        MunicipalityDatabaseConnectionInfo connectionInfo,
+        IntegrationOutboxMessage message,
+        CancellationToken cancellationToken)
+    {
+        var payloadResult = DeserializePayload<MunicipalityComplaintCreatedPayload>(message.Payload);
+        if (!payloadResult.IsSuccess || payloadResult.Value is null)
+        {
+            return Result.Failure(payloadResult.Error ?? "Outbox payload is empty.");
+        }
+
+        var writeResult = await writer.WriteComplaintCreatedAsync(connectionInfo, payloadResult.Value, cancellationToken);
         return writeResult.IsSuccess
             ? Result.Success()
             : Result.Failure(writeResult.Error ?? "Municipality complaint writer failed.");
+    }
+
+    private static async Task<Result> DispatchComplaintStatusChangedAsync(
+        IMunicipalityComplaintWriter writer,
+        MunicipalityDatabaseConnectionInfo connectionInfo,
+        IntegrationOutboxMessage message,
+        CancellationToken cancellationToken)
+    {
+        var payloadResult = DeserializePayload<ComplaintStatusChangedPayload>(message.Payload);
+        if (!payloadResult.IsSuccess || payloadResult.Value is null)
+        {
+            return Result.Failure(payloadResult.Error ?? "Outbox payload is empty.");
+        }
+
+        var writeResult = await writer.WriteComplaintStatusChangedAsync(connectionInfo, payloadResult.Value, cancellationToken);
+        return writeResult.IsSuccess
+            ? Result.Success()
+            : Result.Failure(writeResult.Error ?? "Municipality complaint writer failed.");
+    }
+
+    private static async Task<Result> DispatchComplaintAssignedAsync(
+        IMunicipalityComplaintWriter writer,
+        MunicipalityDatabaseConnectionInfo connectionInfo,
+        IntegrationOutboxMessage message,
+        CancellationToken cancellationToken)
+    {
+        var payloadResult = DeserializePayload<ComplaintAssignedPayload>(message.Payload);
+        if (!payloadResult.IsSuccess || payloadResult.Value is null)
+        {
+            return Result.Failure(payloadResult.Error ?? "Outbox payload is empty.");
+        }
+
+        var writeResult = await writer.WriteComplaintAssignedAsync(connectionInfo, payloadResult.Value, cancellationToken);
+        return writeResult.IsSuccess
+            ? Result.Success()
+            : Result.Failure(writeResult.Error ?? "Municipality complaint writer failed.");
+    }
+
+    private static Result<T> DeserializePayload<T>(string payload)
+    {
+        try
+        {
+            var value = JsonSerializer.Deserialize<T>(payload, JsonOptions);
+            return value is null
+                ? Result<T>.Failure("Outbox payload is empty.")
+                : Result<T>.Success(value);
+        }
+        catch (JsonException exception)
+        {
+            return Result<T>.Failure($"Outbox payload is invalid JSON: {exception.Message}");
+        }
     }
 
     private async Task<Result> DispatchSafelyAsync(

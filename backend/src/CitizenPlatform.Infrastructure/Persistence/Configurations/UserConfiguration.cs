@@ -31,6 +31,10 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnName("is_active")
             .IsRequired();
 
+        builder.Property(entity => entity.PasswordHash)
+            .HasColumnName("password_hash")
+            .HasMaxLength(500);
+
         builder.HasIndex(entity => entity.Email)
             .IsUnique()
             .HasFilter("is_deleted = false");
