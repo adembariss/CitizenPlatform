@@ -83,6 +83,7 @@ docker-compose.yml
 - Domain katmanı dış framework ve altyapı bağımlılığı almaz.
 - Infrastructure ve Integrations katmanları şimdilik adaptör sınırlarını ve konfigürasyon modellerini içerir.
 - Domain ve veritabanı model özeti için `docs/database-design.md` dosyasına bakın.
+- Projenin güncel durumu, build/test sonuçları ve öncelikli eksikler için `docs/project-status.md` dosyasına bakın.
 
 ## Geliştirme Notları
 
