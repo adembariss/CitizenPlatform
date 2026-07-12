@@ -1,11 +1,47 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
+import {
+  ComplaintMapPoint,
+  PublicStats,
+  getComplaintMapPoints,
+  getPublicStats
+} from '../lib/api';
+import { InsightsMap } from '../components/InsightsMap';
 
 type HomePageProps = {
   onReport: () => void;
   onTrack: () => void;
 };
 
+const numberFormat = new Intl.NumberFormat('tr-TR');
+
 export function HomePage({ onReport, onTrack }: HomePageProps) {
+  const [stats, setStats] = useState<PublicStats | null>(null);
+  const [mapPoints, setMapPoints] = useState<ComplaintMapPoint[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getPublicStats()
+      .then((result) => {
+        if (!cancelled && result.success && result.data) {
+          setStats(result.data);
+        }
+      })
+      .catch(() => undefined);
+
+    getComplaintMapPoints(300)
+      .then((result) => {
+        if (!cancelled && result.success && result.data) {
+          setMapPoints(result.data);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="home">
       {/* Hero */}
@@ -40,6 +76,14 @@ export function HomePage({ onReport, onTrack }: HomePageProps) {
         <div className="hero-visual" aria-hidden="true">
           <HeroArt />
         </div>
+      </section>
+
+      {/* Canlı istatistikler */}
+      <section className="stats-band">
+        <StatTile value={stats ? numberFormat.format(stats.totalComplaints) : '—'} label="Toplam Bildirim" />
+        <StatTile value={stats ? numberFormat.format(stats.resolvedComplaints) : '—'} label="Çözülen Bildirim" />
+        <StatTile value={stats ? numberFormat.format(stats.activeMunicipalities) : '—'} label="Aktif Belediye" />
+        <StatTile value={stats ? numberFormat.format(stats.categories) : '—'} label="Hizmet Kategorisi" />
       </section>
 
       {/* Nasıl çalışır */}
@@ -112,6 +156,27 @@ export function HomePage({ onReport, onTrack }: HomePageProps) {
         </div>
       </section>
 
+      {/* Şehirdeki bildirimler haritası */}
+      <section className="section section-tint">
+        <div className="section-head">
+          <span className="section-kicker">ŞEFFAFLIK</span>
+          <h2>Şehirdeki bildirimler</h2>
+          <p className="section-sub">
+            Vatandaşların ilettiği bildirimler harita üzerinde durumlarına göre renklendirilmiştir. Kişisel
+            bilgi paylaşılmaz; yalnızca konum, kategori ve işlem durumu gösterilir.
+          </p>
+        </div>
+        <div className="insights-panel">
+          <InsightsMap points={mapPoints} />
+          <div className="map-legend">
+            <LegendDot color="#1c7ed6" label="Yeni / İnceleniyor" />
+            <LegendDot color="#f59f00" label="İşlemde" />
+            <LegendDot color="#2f9e44" label="Çözüldü" />
+            <LegendDot color="#e03131" label="Reddedildi" />
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="cta-band">
         <div className="cta-inner">
@@ -125,6 +190,24 @@ export function HomePage({ onReport, onTrack }: HomePageProps) {
         </div>
       </section>
     </div>
+  );
+}
+
+function StatTile({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="stat-tile">
+      <span className="stat-value">{value}</span>
+      <span className="stat-label">{label}</span>
+    </div>
+  );
+}
+
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="legend-item">
+      <span className="legend-dot" style={{ background: color }} />
+      {label}
+    </span>
   );
 }
 
@@ -285,30 +368,30 @@ function HeroArt() {
     <svg viewBox="0 0 420 360" width="100%" role="img" aria-label="Harita üzerinde bildirim noktaları">
       <defs>
         <linearGradient id="mapGrad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#0f3a2b" />
-          <stop offset="1" stopColor="#15503a" />
+          <stop offset="0" stopColor="#12235c" />
+          <stop offset="1" stopColor="#1b3a86" />
         </linearGradient>
         <linearGradient id="pinGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#16b866" />
-          <stop offset="1" stopColor="#00954c" />
+          <stop offset="0" stopColor="#22b8e8" />
+          <stop offset="1" stopColor="#1c65c9" />
         </linearGradient>
       </defs>
       <rect x="14" y="14" width="392" height="332" rx="22" fill="url(#mapGrad)" />
       {/* roads */}
-      <g stroke="#2f6b52" strokeWidth="10" strokeLinecap="round" opacity="0.9">
+      <g stroke="#2f4f9e" strokeWidth="10" strokeLinecap="round" opacity="0.9">
         <path d="M40 120 H380" />
         <path d="M40 235 H380" />
         <path d="M150 40 V330" />
         <path d="M280 40 V330" />
       </g>
-      <g stroke="#3f7d62" strokeWidth="3" strokeDasharray="2 10" strokeLinecap="round">
+      <g stroke="#4a6ec2" strokeWidth="3" strokeDasharray="2 10" strokeLinecap="round">
         <path d="M40 120 H380" />
         <path d="M40 235 H380" />
         <path d="M150 40 V330" />
         <path d="M280 40 V330" />
       </g>
       {/* blocks */}
-      <g fill="#1c5640" opacity="0.75">
+      <g fill="#233f8a" opacity="0.8">
         <rect x="58" y="52" width="72" height="48" rx="7" />
         <rect x="300" y="52" width="66" height="48" rx="7" />
         <rect x="58" y="255" width="72" height="55" rx="7" />
@@ -322,12 +405,12 @@ function HeroArt() {
       {/* floating status card */}
       <g>
         <rect x="228" y="250" width="150" height="78" rx="12" fill="#ffffff" />
-        <circle cx="248" cy="273" r="8" fill="#e8f7ef" />
-        <path d="m244.5 273 2.5 2.5 4-4.5" fill="none" stroke="#00954c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <rect x="264" y="268" width="96" height="8" rx="4" fill="#173226" />
-        <rect x="264" y="283" width="70" height="7" rx="3.5" fill="#9db3aa" />
-        <rect x="240" y="303" width="120" height="10" rx="5" fill="#e8f7ef" />
-        <rect x="240" y="303" width="78" height="10" rx="5" fill="#16b866" />
+        <circle cx="248" cy="273" r="8" fill="#e6f0fd" />
+        <path d="m244.5 273 2.5 2.5 4-4.5" fill="none" stroke="#1c65c9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <rect x="264" y="268" width="96" height="8" rx="4" fill="#16213d" />
+        <rect x="264" y="283" width="70" height="7" rx="3.5" fill="#9aa8c6" />
+        <rect x="240" y="303" width="120" height="10" rx="5" fill="#e6f0fd" />
+        <rect x="240" y="303" width="78" height="10" rx="5" fill="#22b8e8" />
       </g>
     </svg>
   );

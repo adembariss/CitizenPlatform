@@ -134,13 +134,66 @@ export async function trackComplaint(trackingCode: string): Promise<ApiResponse<
   return readJson<TrackedComplaint>(response);
 }
 
+export type PublicStats = {
+  totalComplaints: number;
+  resolvedComplaints: number;
+  activeMunicipalities: number;
+  categories: number;
+};
+
+export type ComplaintMapPoint = {
+  latitude: number;
+  longitude: number;
+  categoryName: string;
+  status: string;
+  createdAt: string;
+};
+
+export async function getPublicStats(): Promise<ApiResponse<PublicStats>> {
+  const response = await fetch('/api/public/stats');
+  return readJson<PublicStats>(response);
+}
+
+export async function getComplaintMapPoints(limit = 300): Promise<ApiResponse<ComplaintMapPoint[]>> {
+  const response = await fetch(`/api/public/complaints/map?limit=${limit}`);
+  return readJson<ComplaintMapPoint[]>(response);
+}
+
 export function getCurrentPosition(): Promise<GeolocationPosition> {
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('Bu tarayıcı konum servisini desteklemiyor.'));
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      reject(new Error('Bu tarayıcı konum servisini desteklemiyor. Haritaya tıklayarak konum seçebilirsiniz.'));
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10_000 });
+    // Browser geolocation is only exposed in a secure context (https) or on localhost.
+    // Over a plain-http LAN address the API is silently unavailable, so give a clear hint.
+    if (typeof window !== 'undefined' && window.isSecureContext === false) {
+      reject(
+        new Error(
+          'Konum servisi yalnızca güvenli (https) veya localhost bağlantılarında çalışır. Haritaya tıklayarak konum seçebilirsiniz.'
+        )
+      );
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      resolve,
+      (error) => reject(new Error(geolocationErrorMessage(error))),
+      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 0 }
+    );
   });
+}
+
+function geolocationErrorMessage(error: GeolocationPositionError): string {
+  switch (error.code) {
+    case error.PERMISSION_DENIED:
+      return 'Konum izni verilmedi. Tarayıcı adres çubuğundaki konum simgesinden izin verebilir ya da haritaya tıklayarak konum seçebilirsiniz.';
+    case error.POSITION_UNAVAILABLE:
+      return 'Konumunuz şu anda belirlenemedi. Haritaya tıklayarak konum seçebilirsiniz.';
+    case error.TIMEOUT:
+      return 'Konum alma zaman aşımına uğradı. Tekrar deneyin ya da haritaya tıklayarak konum seçin.';
+    default:
+      return 'Konum alınamadı. Haritaya tıklayarak konum seçebilirsiniz.';
+  }
 }
