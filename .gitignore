@@ -43,3 +43,6 @@ docker-data/
 coverage/
 *.coverage
 *.coveragexml
+
+# Runtime file storage (local provider uploads)
+backend/src/CitizenPlatform.Api/storage/
