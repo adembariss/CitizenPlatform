@@ -9,6 +9,7 @@ using CitizenPlatform.Application.Features.AdminComplaints;
 using CitizenPlatform.Application.Features.AdminDashboard;
 using CitizenPlatform.Application.Features.AdminDepartments;
 using CitizenPlatform.Application.Features.Auth;
+using CitizenPlatform.Application.Features.CitizenAccounts;
 using CitizenPlatform.Application.Features.Complaints;
 using CitizenPlatform.Application.Features.PublicCategories;
 using CitizenPlatform.Application.Features.PublicInsights;
@@ -74,6 +75,7 @@ public static class ServiceCollectionExtensions
 
         RegisterComplaintFeature(services);
         RegisterAuthFeature(services);
+        RegisterCitizenAccountFeature(services);
         RegisterAdminComplaintFeature(services);
         RegisterAdminDashboardFeature(services);
         RegisterAdminCategoryFeature(services);
@@ -112,6 +114,14 @@ public static class ServiceCollectionExtensions
         services.AddScoped<RefreshTokenCommandHandler>();
         services.AddScoped<LogoutCommandHandler>();
         services.AddScoped<IValidator<LoginCommand>, LoginCommandValidator>();
+    }
+
+    private static void RegisterCitizenAccountFeature(IServiceCollection services)
+    {
+        services.AddScoped<RegisterCitizenCommandHandler>();
+        services.AddScoped<CitizenComplaintListQueryHandler>();
+        services.AddScoped<CitizenProfileQueryHandler>();
+        services.AddScoped<IValidator<RegisterCitizenCommand>, RegisterCitizenCommandValidator>();
     }
 
     private static void RegisterAdminComplaintFeature(IServiceCollection services)

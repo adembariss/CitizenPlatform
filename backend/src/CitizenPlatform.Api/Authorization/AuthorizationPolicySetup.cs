@@ -22,5 +22,9 @@ public static class AuthorizationPolicySetup
 
         options.AddPolicy(AuthorizationPolicyNames.RequireAdminAccess, policy =>
             policy.RequireRole("SystemAdmin", "MunicipalityAdmin", "MunicipalityEmployee"));
+
+        // Citizens have no roles; they are identified by the user_type claim.
+        options.AddPolicy(AuthorizationPolicyNames.RequireCitizen, policy =>
+            policy.RequireClaim("user_type", "Citizen"));
     }
 }

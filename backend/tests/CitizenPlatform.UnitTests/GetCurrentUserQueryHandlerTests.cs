@@ -75,6 +75,11 @@ public sealed class GetCurrentUserQueryHandlerTests
             _roleAssignments = roleAssignments;
         }
 
+        public Task AddAsync(User user, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+
         public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken)
         {
             return Task.FromResult(_user);

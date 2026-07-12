@@ -96,6 +96,11 @@ public sealed class LoginCommandHandlerTests
             _roleAssignments = roleAssignments;
         }
 
+        public Task AddAsync(User user, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+
         public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken)
         {
             return Task.FromResult(_user is not null && _user.Email == email.Trim().ToLowerInvariant() ? _user : null);

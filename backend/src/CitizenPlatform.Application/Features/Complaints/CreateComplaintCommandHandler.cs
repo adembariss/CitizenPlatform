@@ -104,10 +104,20 @@ public sealed class CreateComplaintCommandHandler
         CancellationToken cancellationToken)
     {
         var municipalityId = municipalityResult.MunicipalityId!.Value;
-        var citizen = BuildCitizen(command);
-        if (citizen is not null)
+
+        Citizen? citizen;
+        if (command.RegisteredCitizenId is Guid registeredCitizenId)
         {
-            await _citizenRepository.AddAsync(citizen, cancellationToken);
+            // Authenticated citizen: reuse their existing profile, do not create a new record.
+            citizen = await _citizenRepository.GetByIdAsync(registeredCitizenId, cancellationToken);
+        }
+        else
+        {
+            citizen = BuildCitizen(command);
+            if (citizen is not null)
+            {
+                await _citizenRepository.AddAsync(citizen, cancellationToken);
+            }
         }
 
         var rule = await _categoryDepartmentRuleRepository.GetActiveRuleAsync(

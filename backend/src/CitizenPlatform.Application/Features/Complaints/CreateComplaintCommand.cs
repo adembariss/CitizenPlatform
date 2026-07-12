@@ -15,4 +15,7 @@ public sealed record CreateComplaintCommand(
     string? AddressText,
     bool IsAnonymous,
     ComplaintSource Source,
-    IReadOnlyCollection<ComplaintAttachmentUpload>? Attachments = null);
+    IReadOnlyCollection<ComplaintAttachmentUpload>? Attachments = null,
+    // Set when an authenticated citizen submits: the complaint is linked to their
+    // existing Citizen record instead of creating a new anonymous contact record.
+    Guid? RegisteredCitizenId = null);

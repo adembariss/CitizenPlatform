@@ -13,6 +13,11 @@ public sealed class UserRepository : IUserRepository
         _dbContext = dbContext;
     }
 
+    public async Task AddAsync(User user, CancellationToken cancellationToken)
+    {
+        await _dbContext.Users.AddAsync(user, cancellationToken);
+    }
+
     public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken)
     {
         var normalized = email.Trim().ToLowerInvariant();

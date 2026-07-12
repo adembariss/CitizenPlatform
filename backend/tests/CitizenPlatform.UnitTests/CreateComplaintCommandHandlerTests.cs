@@ -256,6 +256,16 @@ public sealed class CreateComplaintCommandHandlerTests
         {
             return Task.CompletedTask;
         }
+
+        public Task<Citizen?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<Citizen?>(null);
+        }
+
+        public Task<Citizen?> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<Citizen?>(null);
+        }
     }
 
     private sealed class FakeComplaintRepository : IComplaintRepository
