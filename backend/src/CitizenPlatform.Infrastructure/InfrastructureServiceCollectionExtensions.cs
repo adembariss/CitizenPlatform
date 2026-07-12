@@ -61,6 +61,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IMunicipalityRepository, MunicipalityRepository>();
         services.AddScoped<IAdminComplaintQueryRepository, AdminComplaintQueryRepository>();
         services.AddScoped<IPublicComplaintTrackingRepository, PublicComplaintTrackingRepository>();
+        services.AddScoped<IPublicInsightsRepository, PublicInsightsRepository>();
         services.AddScoped<IAdminDashboardRepository, AdminDashboardRepository>();
         services.AddScoped<DevelopmentDataSeeder>();
 

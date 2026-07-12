@@ -177,6 +177,50 @@ does not exist or is inactive. Rate limited by the `public-read` policy (60/min)
 }
 ```
 
+## Public Stats
+
+```http
+GET /api/public/stats
+```
+
+Aggregate, non-sensitive platform counters for the citizen landing page. Rate limited by the
+`public-read` policy.
+
+```json
+{
+  "success": true,
+  "data": {
+    "totalComplaints": 11,
+    "resolvedComplaints": 0,
+    "activeMunicipalities": 1,
+    "categories": 7
+  },
+  "message": null,
+  "errors": []
+}
+```
+
+## Public Complaints Map
+
+```http
+GET /api/public/complaints/map?municipalityId={id}&limit={n}
+```
+
+Coarse complaint points for a public transparency map. `municipalityId` is optional (omit for all
+municipalities); `limit` defaults to 300 and is capped at 1000. **Deliberately excludes all citizen
+data, tracking codes and descriptions** — only location, category name, status and creation time.
+
+```json
+{
+  "success": true,
+  "data": [
+    { "latitude": 41.0515, "longitude": 28.9981, "categoryName": "Aydınlatma", "status": "New", "createdAt": "2026-07-12T16:58:22+00:00" }
+  ],
+  "message": null,
+  "errors": []
+}
+```
+
 ## Track Complaint (public)
 
 ```http
