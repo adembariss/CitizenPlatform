@@ -156,6 +156,68 @@ GET /api/public/municipalities/resolve?lat=41.05&lng=29.0
 
 Returns a standard `ApiResponse<MunicipalityResolveResult>`.
 
+## List Municipality Categories (public)
+
+```http
+GET /api/public/municipalities/{municipalityId}/categories
+```
+
+Returns the active complaint categories a citizen can pick when submitting a complaint for that
+municipality (municipality-specific + global ones), ordered by name. `404` when the municipality
+does not exist or is inactive. Rate limited by the `public-read` policy (60/min).
+
+```json
+{
+  "success": true,
+  "data": [
+    { "id": "22222222-2222-2222-2222-222222222201", "name": "Yol ve Kaldırım", "code": "YOL_KALDIRIM" }
+  ],
+  "message": null,
+  "errors": []
+}
+```
+
+## Track Complaint (public)
+
+```http
+GET /api/public/complaints/track/{trackingCode}
+```
+
+Citizen-facing view of a complaint by tracking code. Rate limited by the `public-read` policy
+(60/min). `404` when the code is unknown.
+
+**Deliberately excluded from this response** (enforced in `TrackComplaintQueryHandler`, covered by
+unit tests): citizen personal data (name/phone/email), internal comments (`isInternal=true`),
+status history entries with `isVisibleToCitizen=false`, and all admin user ids.
+
+```json
+{
+  "success": true,
+  "data": {
+    "trackingCode": "BLD-2026-A8F21C",
+    "municipalityName": "Demo Belediyesi",
+    "categoryName": "Yol ve Kaldırım",
+    "departmentName": "Fen İşleri",
+    "title": "Kaldırım hasarı",
+    "description": "...",
+    "addressText": "Demo Mah.",
+    "status": "UnderReview",
+    "createdAt": "2026-07-12T08:37:12+00:00",
+    "updatedAt": "2026-07-12T08:38:10+00:00",
+    "closedAt": null,
+    "attachmentCount": 0,
+    "statusHistory": [
+      { "previousStatus": null, "newStatus": "New", "note": "Complaint created.", "createdAt": "2026-07-12T08:37:12+00:00" }
+    ],
+    "responses": [
+      { "body": "Şikayetiniz Fen İşleri ekibine iletildi.", "createdAt": "2026-07-12T08:38:10+00:00" }
+    ]
+  },
+  "message": null,
+  "errors": []
+}
+```
+
 ## Auth and Admin API
 
 Authentication (`POST /api/auth/login`, `GET /api/auth/me`) and the belediye admin panel endpoints
@@ -164,6 +226,3 @@ Authentication (`POST /api/auth/login`, `GET /api/auth/me`) and the belediye adm
 detail in `docs/auth.md` and `docs/admin-api.md` — not duplicated here to avoid drift between two
 copies of the same contract.
 
-Endpoints that are referenced elsewhere in project docs but are **not implemented yet**:
-
-- `GET /api/public/complaints/track/{trackingCode}` (public tracking by tracking code)

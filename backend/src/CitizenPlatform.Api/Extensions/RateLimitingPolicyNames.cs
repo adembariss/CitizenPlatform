@@ -4,4 +4,5 @@ public static class RateLimitingPolicyNames
 {
     public const string AuthLogin = "auth-login";
     public const string PublicWrite = "public-write";
+    public const string PublicRead = "public-read";
 }

@@ -10,6 +10,7 @@ using CitizenPlatform.Application.Features.AdminDashboard;
 using CitizenPlatform.Application.Features.AdminDepartments;
 using CitizenPlatform.Application.Features.Auth;
 using CitizenPlatform.Application.Features.Complaints;
+using CitizenPlatform.Application.Features.PublicCategories;
 using CitizenPlatform.Infrastructure;
 using CitizenPlatform.Infrastructure.Identity;
 using CitizenPlatform.Infrastructure.Storage;
@@ -94,6 +95,8 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<CreateComplaintCommandHandler>();
         services.AddScoped<AddComplaintAttachmentsCommandHandler>();
+        services.AddScoped<TrackComplaintQueryHandler>();
+        services.AddScoped<PublicCategoryListQueryHandler>();
         services.AddScoped<ComplaintAttachmentUploadService>();
         services.AddScoped<IValidator<CreateComplaintCommand>, CreateComplaintCommandValidator>();
         services.AddScoped<IValidator<AddComplaintAttachmentsCommand>, AddComplaintAttachmentsCommandValidator>();
@@ -192,6 +195,13 @@ public static class ServiceCollectionExtensions
             options.AddFixedWindowLimiter(RateLimitingPolicyNames.PublicWrite, limiterOptions =>
             {
                 limiterOptions.PermitLimit = 30;
+                limiterOptions.Window = TimeSpan.FromMinutes(1);
+                limiterOptions.QueueLimit = 0;
+            });
+
+            options.AddFixedWindowLimiter(RateLimitingPolicyNames.PublicRead, limiterOptions =>
+            {
+                limiterOptions.PermitLimit = 60;
                 limiterOptions.Window = TimeSpan.FromMinutes(1);
                 limiterOptions.QueueLimit = 0;
             });

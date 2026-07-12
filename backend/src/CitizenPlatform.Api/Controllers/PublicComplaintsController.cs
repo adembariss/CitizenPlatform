@@ -15,13 +15,16 @@ public sealed class PublicComplaintsController : ControllerBase
 {
     private readonly CreateComplaintCommandHandler _createComplaintHandler;
     private readonly AddComplaintAttachmentsCommandHandler _addComplaintAttachmentsHandler;
+    private readonly TrackComplaintQueryHandler _trackComplaintHandler;
 
     public PublicComplaintsController(
         CreateComplaintCommandHandler createComplaintHandler,
-        AddComplaintAttachmentsCommandHandler addComplaintAttachmentsHandler)
+        AddComplaintAttachmentsCommandHandler addComplaintAttachmentsHandler,
+        TrackComplaintQueryHandler trackComplaintHandler)
     {
         _createComplaintHandler = createComplaintHandler;
         _addComplaintAttachmentsHandler = addComplaintAttachmentsHandler;
+        _trackComplaintHandler = trackComplaintHandler;
     }
 
     [HttpPost]
@@ -69,6 +72,21 @@ public sealed class PublicComplaintsController : ControllerBase
 
         var result = await _createComplaintHandler.HandleAsync(command, cancellationToken);
         return ToCreateResponse(result);
+    }
+
+    [HttpGet("track/{trackingCode}")]
+    [EnableRateLimiting(RateLimitingPolicyNames.PublicRead)]
+    public async Task<ActionResult<ApiResponse<PublicComplaintTrackingDto>>> Track(
+        string trackingCode,
+        CancellationToken cancellationToken)
+    {
+        var result = await _trackComplaintHandler.HandleAsync(trackingCode, cancellationToken);
+        if (result is null)
+        {
+            return NotFound(ApiResponse<PublicComplaintTrackingDto>.Fail("Complaint could not be found."));
+        }
+
+        return Ok(ApiResponse<PublicComplaintTrackingDto>.Ok(result));
     }
 
     [HttpPost("{trackingCode}/attachments")]
