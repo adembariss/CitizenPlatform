@@ -134,6 +134,24 @@ export async function trackComplaint(trackingCode: string): Promise<ApiResponse<
   return readJson<TrackedComplaint>(response);
 }
 
+// Adds photos to an existing complaint (used by the logged-in flow, which creates
+// the complaint via the authenticated JSON endpoint then attaches photos here).
+export async function addComplaintAttachments(
+  trackingCode: string,
+  files: File[]
+): Promise<ApiResponse<unknown>> {
+  const form = new FormData();
+  for (const file of files) {
+    form.append('files', file, file.name);
+  }
+
+  const response = await fetch(`/api/public/complaints/${encodeURIComponent(trackingCode)}/attachments`, {
+    method: 'POST',
+    body: form
+  });
+  return readJson<unknown>(response);
+}
+
 export type PublicStats = {
   totalComplaints: number;
   resolvedComplaints: number;

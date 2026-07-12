@@ -1040,6 +1040,127 @@ select:focus {
   }
 }
 
+/* ---------------- Auth + Şikayetlerim ---------------- */
+.nav-cta {
+  margin-left: 6px;
+  padding: 9px 16px;
+}
+
+.auth-switch {
+  margin: 0;
+  color: var(--nc-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--nc-blue-700);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.required-hint {
+  color: var(--nc-danger);
+  font-weight: 600;
+}
+
+.field-hint {
+  margin: 0;
+  color: var(--nc-muted);
+  font-size: 13.5px;
+}
+
+.account-hint {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--nc-tint);
+  color: var(--nc-blue-700);
+  font-weight: 600;
+}
+
+.form-error-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mine-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mine-header h2 {
+  font-size: 20px;
+  color: var(--nc-navy);
+}
+
+.mine-empty {
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+}
+
+.mine-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mine-item {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 16px;
+  border: 1px solid var(--nc-line);
+  border-radius: 12px;
+  background: var(--nc-tint-2);
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mine-item:hover {
+  border-color: var(--nc-blue);
+  box-shadow: var(--nc-shadow-sm);
+}
+
+.mine-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mine-item-title {
+  font-weight: 700;
+  color: var(--nc-text);
+}
+
+.mine-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--nc-muted);
+  font-size: 14px;
+}
+
+.mine-item-date {
+  color: var(--nc-muted);
+  font-size: 13px;
+}
+
 @media (max-width: 640px) {
   .site-nav .nav-link {
     padding: 8px 10px;

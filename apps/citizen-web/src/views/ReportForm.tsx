@@ -1,5 +1,6 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import {
+  addComplaintAttachments,
   createComplaint,
   createComplaintWithPhotos,
   getCurrentPosition,
@@ -8,6 +9,8 @@ import {
   PublicCategory
 } from '../lib/api';
 import { LatLng, LocationMap } from '../components/LocationMap';
+import { useAuth } from '../lib/AuthContext';
+import { createComplaintAuthed } from '../lib/auth';
 
 const MAX_PHOTOS = 5;
 
@@ -39,6 +42,7 @@ type ReportFormProps = {
 };
 
 export function ReportForm({ onTrack }: ReportFormProps) {
+  const { isAuthenticated, token, user } = useAuth();
   const [position, setPosition] = useState<LatLng | null>(null);
   const [locating, setLocating] = useState(false);
   const [municipality, setMunicipality] = useState<MunicipalityState>({ status: 'idle' });
@@ -189,6 +193,32 @@ export function ReportForm({ onTrack }: ReportFormProps) {
 
     setSubmit({ status: 'submitting' });
 
+    // Logged-in citizens: attach the complaint to their account via the authenticated
+    // JSON endpoint, then upload any photos through the public attachments endpoint.
+    if (isAuthenticated && token) {
+      const authedResult = await createComplaintAuthed(token, {
+        categoryId,
+        title: title || undefined,
+        description,
+        latitude: position.latitude,
+        longitude: position.longitude
+      });
+
+      if (!authedResult.success || !authedResult.data) {
+        setSubmit({ status: 'error', message: authedResult.message ?? 'Bildirim gönderilemedi.' });
+        return;
+      }
+
+      const trackingCode = authedResult.data.trackingCode;
+      if (photos.length > 0) {
+        // A failed photo upload must not discard the successfully created complaint.
+        await addComplaintAttachments(trackingCode, photos.map((photo) => photo.file)).catch(() => undefined);
+      }
+
+      setSubmit({ status: 'success', trackingCode });
+      return;
+    }
+
     const request = {
       categoryId,
       title: title || undefined,
@@ -328,15 +358,24 @@ export function ReportForm({ onTrack }: ReportFormProps) {
           )}
         </div>
 
-        <label className="checkbox-label">
-          <input type="checkbox" checked={isAnonymous} onChange={(event) => setIsAnonymous(event.target.checked)} />
-          Anonim gönder
-        </label>
-        {!isAnonymous && (
-          <label>
-            Ad Soyad (opsiyonel)
-            <input value={citizenFullName} onChange={(event) => setCitizenFullName(event.target.value)} placeholder="Ada Lovelace" />
-          </label>
+        {isAuthenticated ? (
+          <p className="field-hint account-hint">
+            {user ? `${user.fullName} hesabıyla gönderiyorsun` : 'Hesabınla gönderiyorsun'} — bu bildirim
+            "Şikayetlerim" sayfanda görünecek.
+          </p>
+        ) : (
+          <>
+            <label className="checkbox-label">
+              <input type="checkbox" checked={isAnonymous} onChange={(event) => setIsAnonymous(event.target.checked)} />
+              Anonim gönder
+            </label>
+            {!isAnonymous && (
+              <label>
+                Ad Soyad (opsiyonel)
+                <input value={citizenFullName} onChange={(event) => setCitizenFullName(event.target.value)} placeholder="Ada Lovelace" />
+              </label>
+            )}
+          </>
         )}
 
         {submit.status === 'error' && <p className="form-error">{submit.message}</p>}

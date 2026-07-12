@@ -2,19 +2,30 @@ import { useState } from 'react';
 import { HomePage } from './views/HomePage';
 import { ReportForm } from './views/ReportForm';
 import { TrackComplaint } from './views/TrackComplaint';
+import { LoginView } from './views/LoginView';
+import { RegisterView } from './views/RegisterView';
+import { MyComplaints } from './views/MyComplaints';
 import { BrandMark } from './components/BrandMark';
+import { useAuth } from './lib/AuthContext';
 
 type View =
   | { name: 'home' }
   | { name: 'report' }
-  | { name: 'track'; initialCode?: string };
+  | { name: 'track'; initialCode?: string }
+  | { name: 'login' }
+  | { name: 'register' }
+  | { name: 'mine' };
 
 export function App() {
+  const { isAuthenticated } = useAuth();
   const [view, setView] = useState<View>({ name: 'home' });
 
   const goHome = () => setView({ name: 'home' });
   const goReport = () => setView({ name: 'report' });
   const goTrack = (initialCode?: string) => setView({ name: 'track', initialCode });
+  const goLogin = () => setView({ name: 'login' });
+  const goRegister = () => setView({ name: 'register' });
+  const goMine = () => setView({ name: 'mine' });
 
   return (
     <div className="portal">
@@ -37,6 +48,20 @@ export function App() {
           <button type="button" className={navClass(view.name === 'track')} onClick={() => goTrack()}>
             Şikayet Sorgula
           </button>
+          {isAuthenticated ? (
+            <button type="button" className={navClass(view.name === 'mine')} onClick={goMine}>
+              Şikayetlerim
+            </button>
+          ) : (
+            <>
+              <button type="button" className={navClass(view.name === 'login')} onClick={goLogin}>
+                Giriş
+              </button>
+              <button type="button" className="btn btn-primary nav-cta" onClick={goRegister}>
+                Üye Ol
+              </button>
+            </>
+          )}
         </nav>
       </header>
 
@@ -58,6 +83,29 @@ export function App() {
             </div>
           </div>
         )}
+
+        {view.name === 'login' && (
+          <div className="page">
+            <LoginView onSuccess={goMine} onRegister={goRegister} />
+          </div>
+        )}
+
+        {view.name === 'register' && (
+          <div className="page">
+            <RegisterView onSuccess={goMine} onLogin={goLogin} />
+          </div>
+        )}
+
+        {view.name === 'mine' &&
+          (isAuthenticated ? (
+            <div className="page">
+              <MyComplaints onTrack={goTrack} onReport={goReport} />
+            </div>
+          ) : (
+            <div className="page">
+              <LoginView onSuccess={goMine} onRegister={goRegister} />
+            </div>
+          ))}
       </main>
 
       <footer className="site-footer">
