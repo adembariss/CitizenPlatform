@@ -7,15 +7,30 @@
     "scheme": "citizenplatform",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Şikayet konumunuzu belirlemek için konumunuza ihtiyacımız var."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
     },
     "web": {
       "bundler": "metro"
-    }
+    },
+    "extra": {
+      "apiBaseUrl": "http://localhost:5080"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Şikayet konumunuzu belirlemek için konumunuza ihtiyacımız var."
+        }
+      ]
+    ]
   }
 }

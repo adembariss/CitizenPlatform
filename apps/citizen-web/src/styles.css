@@ -79,6 +79,49 @@ textarea {
   background: #eef5f2;
 }
 
+.map-placeholder.resolved {
+  min-height: auto;
+  padding: 14px;
+  border-style: solid;
+  border-color: #1f6f55;
+}
+
+.checkbox-label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-label input {
+  width: auto;
+}
+
+.form-error {
+  margin: 0;
+  color: #b3261e;
+  font-weight: 600;
+}
+
+.tracking-code {
+  padding: 12px;
+  border-radius: 6px;
+  background: #eef5f2;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+select {
+  width: 100%;
+  border: 1px solid #c8d5d0;
+  border-radius: 6px;
+  padding: 12px;
+  color: #1f2933;
+  font: inherit;
+}
+
 button {
   border: 0;
   border-radius: 6px;

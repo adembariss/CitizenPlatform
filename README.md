@@ -31,20 +31,31 @@ Copy-Item .env.example .env
 docker compose up -d
 ```
 
-Backend build:
+İlk kurulumda migration ve seed (bkz. `database/main-db/README.md` — sıralama önemli, `002`/`003` migration'lardan sonra çalıştırılmalı):
 
 ```powershell
-dotnet build backend/CitizenPlatform.sln
+dotnet ef database update --project backend/src/CitizenPlatform.Infrastructure/CitizenPlatform.Infrastructure.csproj --startup-project backend/src/CitizenPlatform.Api/CitizenPlatform.Api.csproj
+docker exec -i citizenplatform-main-db psql -U citizen_platform -d citizen_platform < database/main-db/002_indexes.sql
+docker exec -i citizenplatform-main-db psql -U citizen_platform -d citizen_platform < database/main-db/003_seed_demo_municipality.sql
 ```
 
-Frontend bağımlılıkları:
+Backend'i çalıştır:
+
+```powershell
+dotnet run --project backend/src/CitizenPlatform.Api/CitizenPlatform.Api.csproj        # http://localhost:5080
+dotnet run --project backend/src/CitizenPlatform.Worker/CitizenPlatform.Worker.csproj  # outbox sync
+```
+
+Frontend bağımlılıkları ve çalıştırma:
 
 ```powershell
 npm install
-npm run dev:admin
-npm run dev:citizen-web
+npm run dev:admin          # http://localhost:5173 — admin@demo.local / Demo123!
+npm run dev:citizen-web    # http://localhost:5174
 npm run dev:citizen-mobile
 ```
+
+admin-web ve citizen-web dev server'ları `/api` isteklerini otomatik olarak `http://localhost:5080`'e proxy'ler (bkz. `vite.config.ts`).
 
 ## Klasör Yapısı
 
