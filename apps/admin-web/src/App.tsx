@@ -1,32 +1,80 @@
-import { FormEvent, useEffect, useState } from 'react';
-import {
-  AdminComplaintListItem,
-  CurrentUser,
-  DashboardSummary,
-  clearSession,
-  getAdminComplaints,
-  getDashboardSummary,
-  getStoredToken,
-  getStoredUser,
-  login,
-  storeSession
-} from './lib/api';
+import { FormEvent, useState } from 'react';
+import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes, useNavigate } from 'react-router-dom';
+import { clearSession, getStoredToken, getStoredUser, login, storeSession } from './lib/api';
+import { DashboardPage } from './pages/DashboardPage';
+import { ComplaintsPage } from './pages/ComplaintsPage';
+import { ComplaintDetailPage } from './pages/ComplaintDetailPage';
+import { CategoriesPage } from './pages/CategoriesPage';
+import { DepartmentsPage } from './pages/DepartmentsPage';
 
 export function App() {
-  const [user, setUser] = useState<CurrentUser | null>(() => (getStoredToken() ? getStoredUser() : null));
-
-  if (!user) {
-    return <LoginScreen onLoggedIn={setUser} />;
-  }
-
-  return <Dashboard user={user} onLogout={() => { clearSession(); setUser(null); }} />;
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route element={<ProtectedLayout />}>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/complaints" element={<ComplaintsPage />} />
+          <Route path="/complaints/:id" element={<ComplaintDetailPage />} />
+          <Route path="/categories" element={<CategoriesPage />} />
+          <Route path="/departments" element={<DepartmentsPage />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
-function LoginScreen({ onLoggedIn }: { onLoggedIn: (user: CurrentUser) => void }) {
+function ProtectedLayout() {
+  const navigate = useNavigate();
+  const user = getStoredToken() ? getStoredUser() : null;
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  function handleLogout() {
+    clearSession();
+    navigate('/login', { replace: true });
+  }
+
+  return (
+    <main className="app-shell">
+      <aside className="sidebar">
+        <strong>CitizenPlatform</strong>
+        <nav>
+          <NavLink to="/" end>
+            Panel
+          </NavLink>
+          <NavLink to="/complaints">Şikayetler</NavLink>
+          <NavLink to="/categories">Kategoriler</NavLink>
+          <NavLink to="/departments">Birimler</NavLink>
+        </nav>
+        <div className="sidebar-user">
+          <span>{user.fullName}</span>
+          <span className="sidebar-role">{user.municipalityName ?? user.userType}</span>
+          <button type="button" onClick={handleLogout}>
+            Çıkış yap
+          </button>
+        </div>
+      </aside>
+      <section className="content">
+        <Outlet />
+      </section>
+    </main>
+  );
+}
+
+function LoginPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('admin@demo.local');
   const [password, setPassword] = useState('Demo123!');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  if (getStoredToken() && getStoredUser()) {
+    return <Navigate to="/" replace />;
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -42,7 +90,7 @@ function LoginScreen({ onLoggedIn }: { onLoggedIn: (user: CurrentUser) => void }
     }
 
     storeSession(result.data);
-    onLoggedIn(result.data.user);
+    navigate('/', { replace: true });
   }
 
   return (
@@ -64,106 +112,6 @@ function LoginScreen({ onLoggedIn }: { onLoggedIn: (user: CurrentUser) => void }
         </button>
         <p className="login-hint">Demo: admin@demo.local / Demo123!</p>
       </form>
-    </main>
-  );
-}
-
-function Dashboard({ user, onLogout }: { user: CurrentUser; onLogout: () => void }) {
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [complaints, setComplaints] = useState<AdminComplaintListItem[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      try {
-        const [summaryResponse, complaintsResponse] = await Promise.all([getDashboardSummary(), getAdminComplaints()]);
-
-        if (cancelled) {
-          return;
-        }
-
-        if (summaryResponse.success && summaryResponse.data) {
-          setSummary(summaryResponse.data);
-        }
-
-        setComplaints(complaintsResponse.items ?? []);
-      } catch {
-        if (!cancelled) {
-          setLoadError('Veriler yüklenemedi. API çalışıyor mu kontrol edin.');
-        }
-      }
-    }
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const metrics = summary
-    ? [
-        { label: 'Toplam bildirim', value: summary.totalComplaints },
-        { label: 'Açık bildirim', value: summary.openComplaints },
-        { label: 'Bugün gelen', value: summary.todayComplaints },
-        { label: 'Çözülen', value: summary.resolvedComplaints }
-      ]
-    : [];
-
-  return (
-    <main className="app-shell">
-      <aside className="sidebar">
-        <strong>CitizenPlatform</strong>
-        <nav>
-          <a href="/">Panel</a>
-          <a href="/">Bildirimler</a>
-          <a href="/">Harita</a>
-          <a href="/">Birimler</a>
-        </nav>
-        <div className="sidebar-user">
-          <span>{user.fullName}</span>
-          <span className="sidebar-role">{user.municipalityName ?? user.userType}</span>
-          <button type="button" onClick={onLogout}>
-            Çıkış yap
-          </button>
-        </div>
-      </aside>
-      <section className="content">
-        <header>
-          <p>Belediye yönetim paneli</p>
-          <h1>Vatandaş bildirimleri</h1>
-        </header>
-
-        {loadError && <p className="form-error">{loadError}</p>}
-
-        <div className="metric-grid">
-          {metrics.map((metric) => (
-            <article key={metric.label} className="metric-card">
-              <span>{metric.label}</span>
-              <strong>{metric.value}</strong>
-            </article>
-          ))}
-        </div>
-
-        <section className="table-panel" aria-label="Son bildirimler">
-          <div className="table-row table-head">
-            <span>Takip Kodu</span>
-            <span>Konu</span>
-            <span>Kategori</span>
-            <span>Durum</span>
-          </div>
-          {complaints.length === 0 && <div className="table-row">Henüz bildirim yok.</div>}
-          {complaints.map((complaint) => (
-            <div className="table-row" key={complaint.id}>
-              <span>{complaint.trackingCode}</span>
-              <span>{complaint.title}</span>
-              <span>{complaint.categoryName}</span>
-              <span>{complaint.status}</span>
-            </div>
-          ))}
-        </section>
-      </section>
     </main>
   );
 }
