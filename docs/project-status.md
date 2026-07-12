@@ -1,155 +1,100 @@
 # CitizenPlatform Project Status
 
-_Son güncelleme: 2026-07-12 (Aşama 8 — Docker düzeltmesi + ilk canlı DB doğrulaması + Frontend entegrasyonu)_
-_Önceki doğrulama: commit `331aaa6` (main, "Add auth and admin complaint management api")_
+_Son güncelleme: 2026-07-12 (Aşama 9 — kalan işlerin tamamı: public tracking/kategori API'leri, admin-web ve citizen-web ekranları, MinIO, refresh token, sertleştirme, citizen-mobile'ın ilk gerçek çalıştırılması)_
+_Önceki doğrulama: commit `7e264dd` (Aşama 8)_
 
 ## 1. Genel Durum
 
-**Bu aşamada proje ilk kez uçtan uca, gerçek bir Docker/Postgres ortamında çalıştırıldı ve doğrulandı** — önceki iki aşamada backend sadece derleme + fake-repository unit testleriyle doğrulanmıştı, hiçbir endpoint gerçek bir veritabanına karşı hiç çağrılmamıştı. Bu turda:
+**Aşama 8 sonunda listelenen 8 öncelikli eksiğin tamamı bu aşamada kapatıldı ve her biri canlı ortamda doğrulandı.** Proje artık uçtan uca özellik-tamamlanmış durumda:
 
-1. Docker Desktop kullanıcı tarafından kuruldu, `docker-compose.yml`'deki init-mount hatası gerçek nedeniyle (EF migration'dan önce index/seed scriptlerinin çalışmaya çalışması) bulunup düzeltildi.
-2. Üç container (`main-db`, `municipality-sample-db`, `minio`) ayağa kaldırıldı, EF Core migration'ları canlı veritabanına uygulandı, demo belediye seed'i çalıştırıldı.
-3. API ve Worker canlı DB'ye karşı çalıştırılıp login, şikayet oluşturma, admin yönetimi ve outbox senkronizasyonu **gerçek HTTP istekleriyle** uçtan uca doğrulandı.
-4. **admin-web ve citizen-web artık gerçek API'ye bağlı** — mock veri kalmadı. Headless tarayıcı (Playwright) ile gerçek bir kullanıcı akışı (login → dashboard, konum paylaş → şikayet oluştur → takip kodu al) çalıştırılıp ekran görüntüleriyle doğrulandı.
-5. **citizen-mobile** gerçek API çağrılarına ve `expo-location` ile gerçek konum servisine bağlandı (TypeScript typecheck geçiyor), ama fiziksel cihaz/emulator olmadığı için çalışma zamanında görsel olarak doğrulanamadı.
+1. **Public tracking + public kategori endpoint'leri** eklendi (madde 1-2) — vatandaş takip koduyla şikayetini görebiliyor; iç notlar, `isVisibleToCitizen=false` geçmiş kayıtları, vatandaş PII'ı ve admin user id'leri **asla dönmüyor** (canlıda gizli not/iç yorum oluşturulup sızmadığı doğrulandı; unit testlerle de korunuyor).
+2. **citizen-mobile ilk kez gerçekten çalıştırıldı** (madde 3) — Metro ile bundle edildi, Expo web üzerinden tarayıcıda koşturuldu: konum → belediye çözümleme → gerçek kategori listesi → gönderim → takip kodu, hepsi canlı API'ye karşı çalıştı (detay bölüm 4).
+3. **admin-web tamamlandı** (madde 4) — routing, şikayet detay/durum/atama/yorum ekranları, kategori/birim yönetimi; tarayıcıda gerçek API'ye karşı uçtan uca doğrulandı.
+4. **citizen-web tamamlandı** (madde 5) — Leaflet harita ile konum seçimi, fotoğraf yükleme (multipart), gerçek kategori listesi, takip ekranı; tarayıcıda doğrulandı.
+5. **MinIO entegrasyonu yazıldı** (madde 6) — `ObjectStorage__Provider=Minio` ile dosyalar gerçekten MinIO'ya gidiyor (canlı doğrulandı: obje bucket'ta, DB satırı `Minio` provider ile).
+6. **Refresh token akışı eklendi** (madde 7) — login'de üretim, tek kullanımlık rotasyon, logout ile iptal; token'lar DB'de sadece SHA-256 hash. Canlıda: aynı token ikinci kullanımda 401, logout sonrası 401.
+7. **Production sertleştirmesi** (madde 8) — Development dışında default/kısa JWT secret ile açılış reddediliyor; rate limit artık IP başına partitioned; `SubmitComplaintCommand.cs` silindi; `.env.example`'daki hiç bind olmayan `OBJECT_STORAGE_*` isimleri `ObjectStorage__*` olarak düzeltildi.
+8. **Bonus — gerçek bug bulundu ve düzeltildi**: multipart form'daki koordinatlar sunucu culture'ı ile parse ediliyordu; tr-TR host'ta `41.05` → `4105` olup validation'a takılıyordu. `Program.cs`'te invariant culture sabitlendi, canlıda doğrulandı. (JSON yolu hiç etkilenmiyordu; bug'ı iki ayrı çalışma bağımsız olarak buldu.)
 
-Kısaca: **Backend artık sadece "test edilmiş" değil, gerçek ortamda "çalıştığı kanıtlanmış" durumda. admin-web ve citizen-web gerçek API'ye bağlı ve tarayıcıda doğrulandı. citizen-mobile kod olarak bağlandı ama cihazda denenmedi. Kalan büyük boşluk: public tracking endpoint'i ve production'a uygun sertleştirme (refresh token, CORS/rate-limit ayarları, gerçek dosya depolama).**
-
-## 2. Build/Test Durumu
+## 2. Build/Test Durumu (bu aşamanın sonunda, bu makinede koşuldu)
 
 | Komut | Sonuç |
 |---|---|
-| `dotnet build backend/CitizenPlatform.sln` | ✅ Başarılı — 0 uyarı, 0 hata |
-| `dotnet test backend/CitizenPlatform.sln` | ✅ **70/70 test geçti** (64 unit + 6 integration, değişmedi) |
-| `npm run build:web` | ✅ admin-web + citizen-web derleniyor |
-| `npm --workspace @citizen-platform/citizen-mobile run typecheck` | ✅ Artık script var (bu turda eklendi) ve **hatasız geçiyor** |
-| `docker compose config` | ✅ **Artık çalıştırılabiliyor** — Docker bu turda kuruldu, config geçerli |
-| `docker compose up -d` | ✅ 3 container da `healthy` |
-| `dotnet ef database update` | ✅ **İlk kez gerçek Postgres'e uygulandı** — 4 migration da başarıyla işlendi |
-| `database/main-db/002_indexes.sql`, `003_seed_demo_municipality.sql` | ✅ Migration sonrası container içinde `psql` ile çalıştırıldı, Demo Belediyesi doğrulandı |
+| `dotnet build backend/CitizenPlatform.sln` | ✅ 0 uyarı, 0 hata |
+| `dotnet test backend/CitizenPlatform.sln` | ✅ **81/81 geçti** (75 unit + 6 integration; önceki 70'e +11: tracking sızıntı önleme, public kategori filtreleme, refresh token rotasyonu) |
+| `npm run build:web` (admin-web + citizen-web) | ✅ tsc + vite temiz |
+| `npm --workspace @citizen-platform/citizen-mobile run typecheck` | ✅ hatasız |
+| Expo web bundle (`npx expo start --web`) | ✅ Metro 262 modül bundle etti, uygulama tarayıcıda çalıştı |
 
-### Canlı ortamda doğrulanan uçtan uca akışlar (curl + Playwright ile)
+### Bu aşamada canlıda doğrulanan akışlar
 
-- `GET /health`, `GET /api/health` → Healthy (gerçek DB bağlantısı ile)
-- `POST /api/auth/login` (`admin@demo.local` / `Demo123!`) → gerçek JWT, doğru roller/belediye
-- `GET /api/auth/me`, yanlış şifre → 401, token'sız admin endpoint → 401
-- `GET /api/public/municipalities/resolve` → PostGIS `ST_Contains` ile gerçek sınır sorgusu (içeride/dışarıda her iki durum da test edildi)
-- `POST /api/public/complaints` → gerçek `Complaint` + outbox mesajı yazıldı
-- `GET /api/admin/complaints`, `GET .../dashboard/summary` → gerçek join sorguları, doğru maskeleme (`"A*** L***"`)
-- `PUT .../status`, `PUT .../assign`, `POST .../comments`, `GET .../history` → hepsi gerçek DB'de doğru şekilde işlendi
-- **Worker** çalıştırıldı → `ComplaintCreated` ve `ComplaintStatusChanged` outbox mesajları `Completed` oldu, belediye `municipality-sample-db`'sinde `municipal_complaints.status` ve `department_name` doğru şekilde güncellendi, `municipal_complaint_status_logs`'a idempotent kayıt düştü.
-- **admin-web**: Playwright ile login → gerçek dashboard metrikleri (toplam/açık/bugün) ve gerçek complaint listesi ekran görüntüsüyle doğrulandı.
-- **citizen-web**: Playwright ile (mock geolocation) "Konumumu kullan" → "Demo Belediyesi" çözümlendi → form gönderildi → gerçek takip kodu (`BLD-2026-...`) alındı, admin-web listesinde anında göründü.
+- `GET /api/public/municipalities/{id}/categories` → demo belediyenin 7 gerçek kategorisi (bilinmeyen/pasif belediye → 404)
+- `GET /api/public/complaints/track/{code}` → durum + görünür geçmiş + public yanıtlar + attachmentCount; **gizli geçmiş notu ve iç yorum response'ta yok**; bilinmeyen kod → 404
+- Refresh token: login → refresh (rotasyon) → eski token 401 → yeni token 200 → logout → 401
+- MinIO: multipart fotoğraflı şikayet → obje `citizen-platform-local` bucket'ında, `complaint_attachments` satırı `Minio` provider ile
+- admin-web (tarayıcı): login → dashboard → filtreli liste → detay → durum güncelle → yorum ekle → birime ata → kategori oluştur/pasifleştir/yeniden adlandır → birim listesi → logout/route koruması
+- citizen-web (tarayıcı): haritadan konum seç → belediye çözümlendi → gerçek kategoriler → fotoğraflı multipart gönderim → takip kodu → takip ekranında sorgulama (bozuk kod → dostane 404)
+- citizen-mobile (Expo web, tarayıcı): konum → "Demo Belediyesi" → 7 kategori chip'i → seçim → gönderim → `BLD-2026-318515` alındı ve tracking endpoint'inden çapraz doğrulandı
+- Worker: bu oturumda biriken **14 pending outbox mesajının tamamı** `Completed` oldu; belediye örnek DB'sinde statüler/birimler doğru yansıdı (`ComplaintAssigned` ve `AdminCommentAdded` mesajları da bu turda gerçek ortamda işlendi — Aşama 8'de eksik kalan teyit tamamlandı)
 
-Bu, projenin **ilk kez tam uçtan uca (frontend → API → DB → outbox → belediye DB) çalıştığı ve kanıtlandığı** an.
+## 3. Yeni/Değişen API Yüzeyi
 
-## 3. Docker Compose Durumu
+- `GET /api/public/complaints/track/{trackingCode}` — sözleşme `docs/api-contract.md`'de; sızıntı kuralları `TrackComplaintQueryHandler`'da tek noktada
+- `GET /api/public/municipalities/{municipalityId}/categories`
+- `POST /api/auth/refresh`, `POST /api/auth/logout` — `docs/auth.md` güncellendi; `LoginResponseDto`'ya `refreshToken` + `refreshTokenExpiresAt` alanları eklendi (ek alan — mevcut client'ları bozmaz)
+- Yeni rate limit policy: `public-read` (60/dk/IP); tüm policy'ler artık IP başına partitioned
 
-**Önceki aşamalarda tespit edilen hata gerçek kök nedeniyle düzeltildi** (önceki analiz kısmen yanlıştı — `municipality-sample-db` mount'u zaten doğruydu, sorun sadece `main-db`'deydi):
+## 4. citizen-mobile Doğrulama Notları
 
-- **Kök neden**: `database/main-db/002_indexes.sql` ve `003_seed_demo_municipality.sql`, EF Core migration'larının oluşturduğu tablolara (`municipality_boundaries`, `complaints`, ...) bağımlı. Bunlar `docker-entrypoint-initdb.d` altında otomatik çalıştığında (container ilk açılışta, migration'lardan önce) `relation "public.municipality_boundaries" does not exist` hatasıyla **container'ın çökmesine** neden oluyordu.
-- **Çözüm**: Yeni `database/docker-init/001_enable_postgis.sql` dosyası oluşturuldu (sadece `CREATE EXTENSION IF NOT EXISTS postgis;`) ve `docker-compose.yml`'deki `main-db` init mount'u buraya yönlendirildi. `database/main-db/001-003` scriptleri olduğu gibi kaldı, ama artık **migration sonrası manuel/scriptli çalıştırılması gereken** dosyalar olarak `database/main-db/README.md`'de net şekilde belgelendi.
-- `municipality-sample-db` mount'u zaten doğruydu ve hep doğru çalıştı — önceki aşamadaki proje-status notu bu konuda hatalıydı, düzeltildi.
-- Doğru başlatma sırası artık `database/main-db/README.md`'de adım adım yazıyor: `docker compose up -d` → `dotnet ef database update` → `002_indexes.sql` → `003_seed_demo_municipality.sql`.
+Bu ortamda Android SDK/emulator yok; doğrulama **Expo web** ile yapıldı (Metro bundler + react-native-web, gerçek API'ye karşı, geolocation mock'lanarak). Bu, kodun gerçek bir çalışma zamanında koştuğunu ilk kez kanıtladı ama **fiziksel cihaz/emulator testi hâlâ yapılmadı** — native-only davranışlar (gerçek expo-location izin akışı, Android network) hâlâ tek doğrulanmamış yüzey.
 
-## 4. Frontend Durumu
+Çalıştırma sırasında bulunup düzeltilen iki monorepo sorunu (bunlar native çalıştırmayı da etkilerdi):
+- `expo/AppEntry.js` hoisted olduğu için `../../App`'i repo kökünde arıyordu → lokal `index.ts` entry + `"main": "index.ts"`
+- Kökte React 18.3.1 (Vite app'leri) + mobile'da 18.2.0 → çift React instance crash'i → `metro.config.js` ile modül çözümü app'in node_modules'üne sabitlendi
 
-### Admin Web — **artık gerçek API'ye bağlı**
+Cihazda test için: `npx expo start` → Expo Go ile QR; `EXPO_PUBLIC_API_BASE_URL`'i makinenin LAN IP'sine ayarla (Android emulator: `http://10.0.2.2:5080`).
 
-- `src/lib/api.ts`: fetch tabanlı client (login, complaint listesi, dashboard summary), JWT `localStorage`'da saklanıyor, 401'de otomatik oturum temizleniyor.
-- Login ekranı eklendi (`admin@demo.local` / `Demo123!` demo ipucuyla), başarılı girişte gerçek dashboard'a geçiyor.
-- Dashboard metrik kartları ve bildirim tablosu artık **gerçek `GET /api/admin/dashboard/summary` ve `GET /api/admin/complaints` verisiyle** doluyor, hardcoded veri kalmadı.
-- Vite dev server proxy'si (`/api` → `http://localhost:5080`) eklendi, CORS'a takılmadan çalışıyor.
-- **Eksik**: routing yok (tek sayfa, sidebar linkleri hâlâ işlevsiz), complaint detay/durum-güncelleme/atama ekranları yok (sadece liste var), kategori/birim yönetim ekranı yok.
+## 5. Bilinen Kalan İşler / Riskler (öncelik sırasıyla)
 
-### Citizen Web — **artık gerçek API'ye bağlı**
+1. **citizen-mobile fiziksel cihaz/emulator testi** — Expo web'de çalıştığı kanıtlandı ama native runtime hâlâ denenmedi.
+2. **Attachment indirme/görüntüleme endpoint'i yok** — admin-web detayda sadece metadata gösteriyor; vatandaş tracking'i sadece sayı veriyor. `IFileStorageService.OpenReadAsync` hazır, sadece controller yüzeyi gerek.
+3. **Mobile'da fotoğraf yükleme ve takip ekranı yok** (web'dekiyle eşitlik için).
+4. **Admin kullanıcı listesi endpoint'i yok** — atamada `assignedUserId` hep null gönderiliyor (birim ataması çalışıyor).
+5. Login rate limit'i (5/dk/IP) NAT arkasındaki büyük ofisler için sıkı olabilir; production'da gözden geçirilebilir.
+6. Doğrulama sırasında demo DB'ye test verisi yazıldı (test şikayetleri, "Gürültü ve Çevre" adlı pasif kategori). Demo ortamı için zararsız; temiz kurulum `docker compose down -v` + bölüm 6 ile yeniden yapılabilir.
 
-- `src/lib/api.ts`: `resolveMunicipality`, `createComplaint`, tarayıcı `navigator.geolocation` sarmalayıcısı.
-- Form artık gerçek: kategori seçimi (demo kategorileri hardcoded — aşağıda not), "Konumumu kullan" butonu gerçek konum alıp `resolve` endpoint'ini çağırıyor, gönderim gerçek `POST /api/public/complaints` yapıyor ve gerçek takip kodunu gösteriyor.
-- **Eksik**: harita/görsel konum seçimi yok (sadece tek tık "konumumu kullan"), fotoğraf yükleme UI'da yok (backend destekliyor ama form'a eklenmedi), kategori listesi gerçek bir public endpoint'ten gelmiyor (aşağıda not).
-
-### Citizen Mobile — **kod olarak bağlandı, cihazda doğrulanamadı**
-
-- `expo-location` + `expo-constants` bağımlılıkları eklendi, `ExpoLocationProvider` (gerçek `LocationProvider` implementasyonu) yazıldı — önceki aşamada sadece interface vardı.
-- `src/services/api.ts`: aynı `resolveMunicipality`/`createComplaint` sözleşmesi, `EXPO_PUBLIC_API_BASE_URL`/`app.json extra.apiBaseUrl` ile yapılandırılabilir (Android emulator için `10.0.2.2` notu eklendi).
-- `HomeScreen.tsx` artık gerçek state/handler'lara sahip: konum al → çöz → gönder → takip kodu göster.
-- `package.json`'a `typecheck` script'i eklendi (**TS hatasız geçiyor**).
-- **Doğrulanamadı**: Bu ortamda Android/iOS emulator veya fiziksel cihaz yok, Expo Metro bundler hiç çalıştırılmadı. Kod mantığı citizen-web ile birebir aynı desende yazıldı (o zaten tarayıcıda çalıştığı kanıtlandı) ama mobile'da gerçek bir çalışma zamanı denemesi yapılmadı — **bu net bir risk, Fable veya bir sonraki oturum fiziksel/emulator testi yapmalı**.
-
-### Ortak sınırlama: Kategori listesi hardcoded
-
-Hem citizen-web hem citizen-mobile, demo belediyenin 7 kategorisini (`database/main-db/003_seed_demo_municipality.sql`'deki sabit GUID'lerle) hardcoded olarak kullanıyor (`lib/categories.ts` / `services/categories.ts`). Gerçek bir "bu belediyenin kategorilerini listele" public endpoint'i yok. Bu, tek-belediye demo senaryosunda çalışır ama gerçek çok-belediyeli üretim için **yeni bir public endpoint gerekiyor** (öncelikli eksiklere eklendi).
-
-## 5. Backend Durumu
-
-Aşama 7'den değişmedi (bkz. git geçmişi) — bu turda sadece `docker-compose.yml`, `database/docker-init/`, `database/main-db/README.md` değişti. Kod tarafında yeni bir şey eklenmedi, sadece **var olan kod ilk kez gerçek bir ortamda doğrulandı**.
-
-## 6. Database Durumu
-
-- **Migration**: 4 migration da canlı `main-db`'ye uygulandı (`dotnet ef database update`), hiç hata yok.
-- **Seed**: Demo Belediyesi + 7 kategori + 5 birim + kategori-birim kuralları + belediye DB bağlantı kaydı, hepsi doğrulandı (`SELECT` ile kontrol edildi).
-- **Municipality sample DB**: Şema container açılışında otomatik oluştu (bu servis zaten doğru mount edilmişti), worker testleriyle gerçek yazma/güncelleme doğrulandı.
-- **MinIO**: Container `healthy`, ama **hâlâ kullanılmıyor** — uygulama kodu sadece `LocalFileStorageService` içeriyor, `IFileStorageService`'in bir MinIO implementasyonu yok. `OBJECT_STORAGE_PROVIDER=Local` varsayılanı zaten bunu yansıtıyor ama docker-compose'daki MinIO servisi şu an "hazır ama bağlanmamış" durumda.
-
-## 7. Outbox / Worker Durumu
-
-Aşama 7'de yazılan mantık **bu turda ilk kez gerçek bir ortamda çalıştırılıp doğrulandı** (bkz. bölüm 2). `ComplaintCreated` ve `ComplaintStatusChanged` mesajları gerçekten işlendi ve belediye örnek veritabanına doğru şekilde yansıdı. `ComplaintAssigned` ve `AdminCommentAdded` kod olarak mevcut ama bu turda canlı ortamda ayrıca tetiklenmedi (assign/comment endpoint'leri curl ile çağrıldı ve outbox mesajı oluştu, ama worker'ın ikinci bir çalıştırmasında bunların da işlendiği ayrıca doğrulanmadı — yüksek olasılıkla çalışır çünkü aynı kod yolu, ama net olarak teyit edilmedi).
-
-## 8-10. Frontend Durumu
-
-Yukarı taşındı → bkz. bölüm 4.
-
-## 11. Güvenlik Riskleri
-
-Aşama 7'deki değerlendirme geçerliliğini koruyor, ek olarak:
-
-- **Yerel `.env` dosyası oluşturuldu** (`.env.example`'dan kopyalanarak) — bu dosya `.gitignore` ile hariç tutuluyor, repoya girmedi. ✅
-- **MinIO credential'ları** (`citizenplatform` / `change-me-local`) sadece local `.env`'de, placeholder niteliğinde. ✅
-- Diğer tüm riskler (refresh token yok, public tracking yok, rate limit basit) değişmedi.
-
-## 12. Multi-Tenant Riskleri
-
-Değişmedi, aşama 7'deki testler hâlâ geçerli. Bu turda ayrıca gerçek DB üzerinde de dolaylı olarak doğrulandı (demo belediye dışında ikinci bir belediye olmadığı için cross-tenant senaryosu canlı ortamda ayrıca denenmedi, ama fake-repository testleri değişmeden geçmeye devam ediyor).
-
-## 13. Öncelikli Eksikler
-
-1. **Public tracking endpoint**: `GET /api/public/complaints/track/{trackingCode}` — hâlâ yok.
-2. **Public kategori listesi endpoint'i**: citizen-web/mobile'daki hardcoded kategori listesinin yerini alacak gerçek bir "belediyenin kategorilerini getir" endpoint'i yok (bu turda ortaya çıkan yeni bir ihtiyaç).
-3. **citizen-mobile cihaz/emulator testi**: Kod yazıldı ve typecheck geçti ama hiç çalıştırılmadı — bir sonraki oturumda Expo Go veya emulator ile denenmeli.
-4. **admin-web routing + eksik ekranlar**: complaint detay/durum-güncelleme/atama/yorum ekranları, kategori/birim yönetim ekranı yok — sadece liste + dashboard var.
-5. **citizen-web'de fotoğraf yükleme UI'ı** yok (backend destekliyor).
-6. **MinIO entegrasyonu**: Container ayakta ama `IFileStorageService`'in Minio implementasyonu hiç yazılmadı.
-7. **Refresh token**: Hâlâ yok.
-8. **`SubmitComplaintCommand.cs`**: Hâlâ temizlenmedi.
-
-## 14. Devam Planı
-
-1. Public tracking + public kategori listesi endpoint'lerini ekle (ikisi de citizen tarafının gerçek kullanılabilirliği için kritik).
-2. citizen-mobile'ı Expo Go veya emulator ile gerçekten çalıştırıp doğrula.
-3. admin-web'e routing ekleyip complaint detay/durum/atama/yorum ekranlarını gerçek API'ye bağla.
-4. citizen-web'e fotoğraf yükleme ve gerçek harita (Leaflet/MapLibre) ekle.
-5. MinIO `IFileStorageService` implementasyonunu yaz, `OBJECT_STORAGE_PROVIDER=Minio` ile local'den geçişi mümkün kıl.
-6. Refresh token akışını ekle.
-7. Production sertleştirmesi: gerçek `JWT__SECRET`, CORS origin listesinin daraltılması, rate limit'in gözden geçirilmesi.
-
-## 15. Bu ortamda çalıştırma notları (bir sonraki oturum için)
+## 6. Ortamı Ayağa Kaldırma
 
 ```powershell
-# 1. Servisleri başlat (main-db, municipality-sample-db, minio)
+# 1. Servisler (main-db, municipality-sample-db, minio)
 docker compose up -d
 
-# 2. (Sadece ilk kurulumda) migration + seed
+# 2. (Sadece ilk kurulumda) migration + index/seed
 dotnet ef database update --project backend/src/CitizenPlatform.Infrastructure/CitizenPlatform.Infrastructure.csproj --startup-project backend/src/CitizenPlatform.Api/CitizenPlatform.Api.csproj
 docker exec -i citizenplatform-main-db psql -U citizen_platform -d citizen_platform < database/main-db/002_indexes.sql
 docker exec -i citizenplatform-main-db psql -U citizen_platform -d citizen_platform < database/main-db/003_seed_demo_municipality.sql
 
-# 3. Backend'i çalıştır
-dotnet run --project backend/src/CitizenPlatform.Api/CitizenPlatform.Api.csproj        # http://localhost:5080
-dotnet run --project backend/src/CitizenPlatform.Worker/CitizenPlatform.Worker.csproj  # outbox sync
+# 3. Backend (API http://localhost:5080 — launchSettings yok, URL'i env ile ver)
+$env:ASPNETCORE_URLS='http://localhost:5080'; $env:ASPNETCORE_ENVIRONMENT='Development'
+dotnet run --project backend/src/CitizenPlatform.Api/CitizenPlatform.Api.csproj
+dotnet run --project backend/src/CitizenPlatform.Worker/CitizenPlatform.Worker.csproj
 
-# 4. Frontend'leri çalıştır
+# MinIO'ya geçmek için API'yi şu env'lerle başlat:
+#   ObjectStorage__Provider=Minio  ObjectStorage__Endpoint=http://localhost:9000
+#   ObjectStorage__BucketName=citizen-platform-local
+#   ObjectStorage__AccessKey=citizenplatform  ObjectStorage__SecretKey=change-me-local
+
+# 4. Frontend'ler
 npm run dev:admin          # http://localhost:5173 (admin@demo.local / Demo123!)
 npm run dev:citizen-web    # http://localhost:5174
+npm --workspace @citizen-platform/citizen-mobile run web   # Expo web (test için)
 ```
 
-Docker container'ları bu oturum sonunda **çalışır durumda bırakıldı** (main-db, municipality-sample-db, minio — hepsi `healthy`). `dotnet run` ile başlatılan API/Worker ve `npm run dev` ile başlatılan frontend dev server'ları ise doğrulama tamamlandıktan sonra durduruldu.
+Docker container'ları bu oturum sonunda çalışır bırakıldı; API/Worker/dev server'lar durduruldu.
+
+## 7. Mimari Kurallara Uygunluk
+
+- **Clean Architecture**: yeni iş mantığının tamamı Application handler'larında (`TrackComplaintQueryHandler`, `PublicCategoryListQueryHandler`, `RefreshTokenCommandHandler`, `LogoutCommandHandler`); controller'lar ince; Domain'e framework bağımlılığı girmedi. Storage doğrulama boru hattı `FileStorageServiceBase`'e çekildi, Local/MinIO sadece persistence implemente ediyor.
+- **Outbox**: hiçbir yeni yazma yolu belediye DB'sine doğrudan yazmıyor; worker bu turda gerçek ortamda tekrar doğrulandı.
+- **Multi-tenant**: yeni public endpoint'ler tenant-scope gerektirmiyor (tracking kod capability'si + belediye-id'li public liste); admin yüzeyi değişmedi, mevcut TenantScope testleri geçiyor.
+- **Secret'lar**: repoya secret girmedi; `.env.example` placeholder; Development dışında default JWT secret fail-fast.
