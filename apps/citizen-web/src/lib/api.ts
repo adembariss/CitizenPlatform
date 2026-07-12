@@ -13,6 +13,12 @@ export type MunicipalityResolveResult = {
   failureReason: string | null;
 };
 
+export type PublicCategory = {
+  id: string;
+  name: string;
+  code: string;
+};
+
 export type CreateComplaintResponse = {
   complaintId: string;
   trackingCode: string;
@@ -35,6 +41,35 @@ export type CreateComplaintRequest = {
   source: 'CitizenWeb';
 };
 
+export type ComplaintStatusHistoryEntry = {
+  previousStatus: string | null;
+  newStatus: string;
+  note: string | null;
+  createdAt: string;
+};
+
+export type ComplaintResponseEntry = {
+  body: string;
+  createdAt: string;
+};
+
+export type TrackedComplaint = {
+  trackingCode: string;
+  municipalityName: string;
+  categoryName: string;
+  departmentName: string | null;
+  title: string;
+  description: string;
+  addressText: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string | null;
+  closedAt: string | null;
+  attachmentCount: number;
+  statusHistory: ComplaintStatusHistoryEntry[];
+  responses: ComplaintResponseEntry[];
+};
+
 async function readJson<T>(response: Response): Promise<ApiResponse<T>> {
   const body = (await response.json()) as ApiResponse<T>;
   return body;
@@ -45,6 +80,11 @@ export async function resolveMunicipality(latitude: number, longitude: number): 
   return readJson<MunicipalityResolveResult>(response);
 }
 
+export async function getMunicipalityCategories(municipalityId: string): Promise<ApiResponse<PublicCategory[]>> {
+  const response = await fetch(`/api/public/municipalities/${municipalityId}/categories`);
+  return readJson<PublicCategory[]>(response);
+}
+
 export async function createComplaint(request: CreateComplaintRequest): Promise<ApiResponse<CreateComplaintResponse>> {
   const response = await fetch('/api/public/complaints', {
     method: 'POST',
@@ -53,6 +93,45 @@ export async function createComplaint(request: CreateComplaintRequest): Promise<
   });
 
   return readJson<CreateComplaintResponse>(response);
+}
+
+function buildComplaintForm(request: CreateComplaintRequest, files: File[]): FormData {
+  const form = new FormData();
+  form.append('categoryId', request.categoryId);
+  form.append('description', request.description);
+  form.append('latitude', String(request.latitude));
+  form.append('longitude', String(request.longitude));
+  form.append('isAnonymous', String(request.isAnonymous));
+  form.append('source', request.source);
+
+  if (request.title) form.append('title', request.title);
+  if (request.citizenFullName) form.append('citizenFullName', request.citizenFullName);
+  if (request.citizenPhoneNumber) form.append('citizenPhoneNumber', request.citizenPhoneNumber);
+  if (request.citizenEmail) form.append('citizenEmail', request.citizenEmail);
+  if (request.addressText) form.append('addressText', request.addressText);
+
+  for (const file of files) {
+    form.append('files', file, file.name);
+  }
+
+  return form;
+}
+
+export async function createComplaintWithPhotos(
+  request: CreateComplaintRequest,
+  files: File[]
+): Promise<ApiResponse<CreateComplaintResponse>> {
+  const response = await fetch('/api/public/complaints', {
+    method: 'POST',
+    body: buildComplaintForm(request, files)
+  });
+
+  return readJson<CreateComplaintResponse>(response);
+}
+
+export async function trackComplaint(trackingCode: string): Promise<ApiResponse<TrackedComplaint>> {
+  const response = await fetch(`/api/public/complaints/track/${encodeURIComponent(trackingCode.trim())}`);
+  return readJson<TrackedComplaint>(response);
 }
 
 export function getCurrentPosition(): Promise<GeolocationPosition> {
