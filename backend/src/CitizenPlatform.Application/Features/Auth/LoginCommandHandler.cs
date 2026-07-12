@@ -14,19 +14,22 @@ public sealed class LoginCommandHandler
     private readonly IMunicipalityRepository _municipalityRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenService _tokenService;
+    private readonly IRefreshTokenService _refreshTokenService;
 
     public LoginCommandHandler(
         IValidator<LoginCommand> validator,
         IUserRepository userRepository,
         IMunicipalityRepository municipalityRepository,
         IPasswordHasher passwordHasher,
-        ITokenService tokenService)
+        ITokenService tokenService,
+        IRefreshTokenService refreshTokenService)
     {
         _validator = validator;
         _userRepository = userRepository;
         _municipalityRepository = municipalityRepository;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
+        _refreshTokenService = refreshTokenService;
     }
 
     public async Task<Result<LoginResponseDto>> HandleAsync(LoginCommand command, CancellationToken cancellationToken)
@@ -64,6 +67,13 @@ public sealed class LoginCommandHandler
             currentUser.MunicipalityId,
             currentUser.Roles));
 
-        return Result<LoginResponseDto>.Success(new LoginResponseDto(token.AccessToken, token.ExpiresAt, currentUser));
+        var refreshToken = await _refreshTokenService.IssueAsync(user.Id, cancellationToken);
+
+        return Result<LoginResponseDto>.Success(new LoginResponseDto(
+            token.AccessToken,
+            token.ExpiresAt,
+            currentUser,
+            refreshToken.Token,
+            refreshToken.ExpiresAt));
     }
 }

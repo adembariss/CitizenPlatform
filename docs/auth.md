@@ -26,6 +26,8 @@ Başarılı cevap (`200 OK`):
   "data": {
     "accessToken": "...",
     "expiresAt": "2026-07-12T13:00:00Z",
+    "refreshToken": "96-hex-karakterlik-tek-kullanimlik-token",
+    "refreshTokenExpiresAt": "2026-07-26T12:00:00Z",
     "user": {
       "id": "...",
       "fullName": "Demo Belediye Yoneticisi",
@@ -52,6 +54,32 @@ Authorization: Bearer <accessToken>
 
 Token geçerli değilse veya yoksa `401 Unauthorized` döner. Geçerliyse `LoginResponseDto.user` ile aynı şekle sahip `CurrentUserDto` döner.
 
+### `POST /api/auth/refresh`
+
+```json
+{ "refreshToken": "..." }
+```
+
+Refresh token'ı doğrular ve **tek kullanımlık rotasyon** uygular: eski token anında iptal edilir
+(`RevokedAt` + `ReplacedByTokenId`), yeni bir access token + yeni bir refresh token döner
+(`LoginResponseDto` ile aynı şekil). Bilinmeyen, süresi dolmuş, iptal edilmiş veya daha önce
+kullanılmış token her zaman `401` (`Invalid or expired refresh token.`) döner — canlı ortamda
+doğrulandı: aynı token ikinci kez kullanılınca 401. Kullanıcı pasifleştirilmişse rotasyonla
+üretilen yeni token da anında iptal edilir.
+
+Token'lar veritabanında **sadece SHA-256 hash olarak** saklanır (`refresh_tokens.TokenHash`);
+düz token yalnızca response'ta bir kez görünür.
+
+### `POST /api/auth/logout`
+
+```json
+{ "refreshToken": "..." }
+```
+
+Verilen refresh token'ı iptal eder; her zaman `200` döner (token bilinmiyorsa sessizce yok sayılır).
+Access token'lar stateless olduğu için süreleri dolana kadar geçerli kalır — bu yüzden access token
+ömrü kısa tutulmalıdır.
+
 ## Token içeriği
 
 Access token'ın claim'leri:
@@ -63,7 +91,8 @@ Access token'ın claim'leri:
 - `municipality_id`: sadece belediye bazlı kullanıcılarda mevcut (SystemAdmin'de yok)
 - `ClaimTypes.Role`: kullanıcının aktif rollerinin her biri için bir claim (örn. `MunicipalityAdmin`)
 
-Refresh token bu fazda yok; sadece access token var. `RefreshToken` domain entity'si ileride eklenecek akış için zaten hazır durumda, sadece kullanılmıyor.
+Refresh token akışı yukarıda anlatıldığı gibi aktif: login'de üretilir, `/api/auth/refresh` ile
+tek kullanımlık rotasyonla yenilenir, `/api/auth/logout` ile iptal edilir.
 
 ## Konfigürasyon
 
@@ -75,8 +104,9 @@ Ortam değişkenleri (`.env` / `JWT__*`):
 | `JWT__AUDIENCE` | Token audience | `citizen-platform` |
 | `JWT__SECRET` | HMAC-SHA256 imzalama anahtarı | `change-me-local-development-secret-please-replace` |
 | `JWT__ACCESS_TOKEN_MINUTES` | Access token ömrü (dakika) | `60` |
+| `JWT__REFRESH_TOKEN_DAYS` | Refresh token ömrü (gün) | `14` |
 
-**`JWT__SECRET` production'da mutlaka gerçek bir secret ile değiştirilmeli.** `.env.example` içindeki değer sadece local development placeholder'ıdır, repoya gerçek secret asla yazılmaz.
+**`JWT__SECRET` production'da mutlaka gerçek bir secret ile değiştirilmeli.** `.env.example` içindeki değer sadece local development placeholder'ıdır, repoya gerçek secret asla yazılmaz. Ayrıca API, `Development` dışındaki ortamlarda default secret veya 32 karakterden kısa bir secret ile **açılmayı reddeder** (`JwtOptions.EnsureProductionSecret`, `Program.cs`'te fail-fast).
 
 ## Password hashing
 

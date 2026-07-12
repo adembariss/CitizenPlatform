@@ -1,7 +1,19 @@
+using System.Globalization;
 using CitizenPlatform.Api.Extensions;
+using CitizenPlatform.Infrastructure.Identity;
 using CitizenPlatform.Infrastructure.Seeding;
 
+// Form/query model binding is culture-sensitive; pin to invariant so "41.05" parses the
+// same regardless of the host OS locale (tr-TR parses it as 4105 otherwise).
+CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+
 var builder = WebApplication.CreateBuilder(args);
+
+if (!builder.Environment.IsDevelopment())
+{
+    JwtOptions.EnsureProductionSecret(builder.Configuration);
+}
 
 builder.Services.AddCitizenPlatformApi(builder.Configuration);
 

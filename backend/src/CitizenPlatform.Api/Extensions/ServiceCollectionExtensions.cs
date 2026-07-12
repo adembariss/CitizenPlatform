@@ -106,6 +106,8 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<LoginCommandHandler>();
         services.AddScoped<GetCurrentUserQueryHandler>();
+        services.AddScoped<RefreshTokenCommandHandler>();
+        services.AddScoped<LogoutCommandHandler>();
         services.AddScoped<IValidator<LoginCommand>, LoginCommandValidator>();
     }
 
@@ -185,26 +187,26 @@ public static class ServiceCollectionExtensions
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-            options.AddFixedWindowLimiter(RateLimitingPolicyNames.AuthLogin, limiterOptions =>
-            {
-                limiterOptions.PermitLimit = 5;
-                limiterOptions.Window = TimeSpan.FromMinutes(1);
-                limiterOptions.QueueLimit = 0;
-            });
-
-            options.AddFixedWindowLimiter(RateLimitingPolicyNames.PublicWrite, limiterOptions =>
-            {
-                limiterOptions.PermitLimit = 30;
-                limiterOptions.Window = TimeSpan.FromMinutes(1);
-                limiterOptions.QueueLimit = 0;
-            });
-
-            options.AddFixedWindowLimiter(RateLimitingPolicyNames.PublicRead, limiterOptions =>
-            {
-                limiterOptions.PermitLimit = 60;
-                limiterOptions.Window = TimeSpan.FromMinutes(1);
-                limiterOptions.QueueLimit = 0;
-            });
+            // Partitioned per client IP so one noisy client cannot exhaust the global budget.
+            AddPerClientFixedWindowPolicy(options, RateLimitingPolicyNames.AuthLogin, permitLimit: 5);
+            AddPerClientFixedWindowPolicy(options, RateLimitingPolicyNames.PublicWrite, permitLimit: 30);
+            AddPerClientFixedWindowPolicy(options, RateLimitingPolicyNames.PublicRead, permitLimit: 60);
         });
+    }
+
+    private static void AddPerClientFixedWindowPolicy(
+        RateLimiterOptions options,
+        string policyName,
+        int permitLimit)
+    {
+        options.AddPolicy(policyName, httpContext =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = permitLimit,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
+                }));
     }
 }

@@ -22,6 +22,8 @@ public sealed class LoginCommandHandlerTests
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.Value);
         Assert.False(string.IsNullOrWhiteSpace(result.Value!.AccessToken));
+        Assert.False(string.IsNullOrWhiteSpace(result.Value.RefreshToken));
+        Assert.True(result.Value.RefreshTokenExpiresAt > DateTimeOffset.UtcNow);
         Assert.Equal("MunicipalityAdmin", result.Value.User.UserType);
         Assert.Equal(MunicipalityId, result.Value.User.MunicipalityId);
         Assert.Contains("MunicipalityAdmin", result.Value.User.Roles);
@@ -72,7 +74,8 @@ public sealed class LoginCommandHandlerTests
             userRepository,
             new FakeMunicipalityRepository(),
             new FakePasswordHasher(),
-            new FakeTokenService());
+            new FakeTokenService(),
+            new FakeRefreshTokenService());
     }
 
     private static User CreateUser(string email, string displayName, UserType userType, string plainTextPassword)
@@ -136,6 +139,24 @@ public sealed class LoginCommandHandlerTests
         public AccessTokenResult CreateAccessToken(AccessTokenRequest request)
         {
             return new AccessTokenResult($"fake-token-for-{request.UserId}", DateTimeOffset.UtcNow.AddHours(1));
+        }
+    }
+
+    private sealed class FakeRefreshTokenService : IRefreshTokenService
+    {
+        public Task<IssuedRefreshToken> IssueAsync(Guid userId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new IssuedRefreshToken($"fake-refresh-for-{userId}", DateTimeOffset.UtcNow.AddDays(14)));
+        }
+
+        public Task<RotatedRefreshToken?> RotateAsync(string refreshToken, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<RotatedRefreshToken?>(null);
+        }
+
+        public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
         }
     }
 }

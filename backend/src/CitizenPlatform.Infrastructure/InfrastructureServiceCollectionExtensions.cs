@@ -32,7 +32,18 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddScoped<IFileSafetyScanner, NoOpFileSafetyScanner>();
         services.AddScoped<IImageMetadataReader, ExifImageMetadataReader>();
-        services.AddScoped<IFileStorageService, LocalFileStorageService>();
+        var storageProvider = configuration
+            .GetSection(ObjectStorageOptions.SectionName)
+            .GetValue<string>(nameof(ObjectStorageOptions.Provider));
+
+        if (string.Equals(storageProvider, "Minio", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddScoped<IFileStorageService, MinioFileStorageService>();
+        }
+        else
+        {
+            services.AddScoped<IFileStorageService, LocalFileStorageService>();
+        }
         services.AddScoped<IGeospatialService, GeospatialService>();
         services.AddScoped<IGeoMunicipalityBoundaryLookup, PostgisMunicipalityBoundaryLookup>();
         services.AddScoped<IGeoMunicipalityResolver, GeoMunicipalityResolver>();
@@ -46,6 +57,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<ITrackingCodeGenerator, TrackingCodeGenerator>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<IMunicipalityRepository, MunicipalityRepository>();
         services.AddScoped<IAdminComplaintQueryRepository, AdminComplaintQueryRepository>();
         services.AddScoped<IPublicComplaintTrackingRepository, PublicComplaintTrackingRepository>();

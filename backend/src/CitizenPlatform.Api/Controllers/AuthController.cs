@@ -15,11 +15,19 @@ public sealed class AuthController : ControllerBase
 {
     private readonly LoginCommandHandler _loginHandler;
     private readonly GetCurrentUserQueryHandler _getCurrentUserHandler;
+    private readonly RefreshTokenCommandHandler _refreshTokenHandler;
+    private readonly LogoutCommandHandler _logoutHandler;
 
-    public AuthController(LoginCommandHandler loginHandler, GetCurrentUserQueryHandler getCurrentUserHandler)
+    public AuthController(
+        LoginCommandHandler loginHandler,
+        GetCurrentUserQueryHandler getCurrentUserHandler,
+        RefreshTokenCommandHandler refreshTokenHandler,
+        LogoutCommandHandler logoutHandler)
     {
         _loginHandler = loginHandler;
         _getCurrentUserHandler = getCurrentUserHandler;
+        _refreshTokenHandler = refreshTokenHandler;
+        _logoutHandler = logoutHandler;
     }
 
     [HttpPost("login")]
@@ -35,6 +43,31 @@ public sealed class AuthController : ControllerBase
         }
 
         return Ok(ApiResponse<LoginResponseDto>.Ok(result.Value));
+    }
+
+    [HttpPost("refresh")]
+    [EnableRateLimiting(RateLimitingPolicyNames.PublicRead)]
+    public async Task<ActionResult<ApiResponse<LoginResponseDto>>> Refresh(
+        [FromBody] RefreshTokenCommand command,
+        CancellationToken cancellationToken)
+    {
+        var result = await _refreshTokenHandler.HandleAsync(command, cancellationToken);
+        if (!result.IsSuccess || result.Value is null)
+        {
+            return Unauthorized(ApiResponse<LoginResponseDto>.Fail(result.Error ?? "Invalid or expired refresh token.", result.Errors));
+        }
+
+        return Ok(ApiResponse<LoginResponseDto>.Ok(result.Value));
+    }
+
+    [HttpPost("logout")]
+    [EnableRateLimiting(RateLimitingPolicyNames.PublicRead)]
+    public async Task<ActionResult<ApiResponse<object?>>> Logout(
+        [FromBody] RefreshTokenCommand command,
+        CancellationToken cancellationToken)
+    {
+        await _logoutHandler.HandleAsync(command, cancellationToken);
+        return Ok(ApiResponse<object?>.Ok(null));
     }
 
     [HttpGet("me")]
