@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { createComplaint, resolveMunicipality } from '../services/api';
-import { DEMO_CATEGORIES } from '../services/categories';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { createComplaint, getMunicipalityCategories, resolveMunicipality, type PublicCategory } from '../services/api';
 import { ExpoLocationProvider } from '../services/location/ExpoLocationProvider';
 
 const locationProvider = new ExpoLocationProvider();
@@ -9,7 +8,7 @@ const locationProvider = new ExpoLocationProvider();
 type LocationState =
   | { status: 'idle' }
   | { status: 'locating' }
-  | { status: 'resolved'; latitude: number; longitude: number; municipalityName: string }
+  | { status: 'resolved'; latitude: number; longitude: number; municipalityName: string; municipalityId: string }
   | { status: 'error'; message: string };
 
 type SubmitState = { status: 'idle' } | { status: 'submitting' } | { status: 'success'; trackingCode: string } | { status: 'error'; message: string };
@@ -18,6 +17,8 @@ export function HomeScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState<LocationState>({ status: 'idle' });
+  const [categories, setCategories] = useState<PublicCategory[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [submit, setSubmit] = useState<SubmitState>({ status: 'idle' });
 
   async function handleUseLocation() {
@@ -26,7 +27,7 @@ export function HomeScreen() {
       const coordinates = await locationProvider.getCurrentPosition();
       const resolved = await resolveMunicipality(coordinates.latitude, coordinates.longitude);
 
-      if (!resolved.data?.isSuccess || !resolved.data.municipalityName) {
+      if (!resolved.data?.isSuccess || !resolved.data.municipalityName || !resolved.data.municipalityId) {
         setLocation({
           status: 'error',
           message: resolved.data?.failureReason ?? 'Bu konum için hizmet veren bir belediye bulunamadı.'
@@ -38,8 +39,16 @@ export function HomeScreen() {
         status: 'resolved',
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
-        municipalityName: resolved.data.municipalityName
+        municipalityName: resolved.data.municipalityName,
+        municipalityId: resolved.data.municipalityId
       });
+
+      const categoryResult = await getMunicipalityCategories(resolved.data.municipalityId);
+      const loadedCategories = categoryResult.data ?? [];
+      setCategories(loadedCategories);
+      setSelectedCategoryId((current) =>
+        current && loadedCategories.some((category) => category.id === current) ? current : null
+      );
     } catch (error) {
       setLocation({ status: 'error', message: error instanceof Error ? error.message : 'Konum alınamadı.' });
     }
@@ -51,6 +60,11 @@ export function HomeScreen() {
       return;
     }
 
+    if (!selectedCategoryId) {
+      setSubmit({ status: 'error', message: 'Lütfen bir kategori seçin.' });
+      return;
+    }
+
     if (!description.trim()) {
       setSubmit({ status: 'error', message: 'Açıklama zorunludur.' });
       return;
@@ -59,7 +73,7 @@ export function HomeScreen() {
     setSubmit({ status: 'submitting' });
 
     const result = await createComplaint({
-      categoryId: DEMO_CATEGORIES[0].id,
+      categoryId: selectedCategoryId,
       title: title || undefined,
       description,
       latitude: location.latitude,
@@ -124,6 +138,26 @@ export function HomeScreen() {
           {(location.status === 'idle' || location.status === 'error') && <Text style={styles.locationText}>Konumumu kullan</Text>}
         </TouchableOpacity>
         {location.status === 'error' && <Text style={styles.errorText}>{location.message}</Text>}
+        {location.status === 'resolved' && categories.length > 0 && (
+          <View style={styles.categorySection}>
+            <Text style={styles.locationText}>Kategori seçin</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryList}>
+              {categories.map((category) => (
+                <TouchableOpacity
+                  key={category.id}
+                  style={[styles.categoryChip, selectedCategoryId === category.id && styles.categoryChipSelected]}
+                  onPress={() => setSelectedCategoryId(category.id)}
+                >
+                  <Text
+                    style={[styles.categoryChipText, selectedCategoryId === category.id && styles.categoryChipTextSelected]}
+                  >
+                    {category.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
         {submit.status === 'error' && <Text style={styles.errorText}>{submit.message}</Text>}
         <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={submit.status === 'submitting'}>
           {submit.status === 'submitting' ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.buttonText}>Gönder</Text>}
@@ -182,6 +216,32 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#b3261e',
     fontWeight: '600'
+  },
+  categorySection: {
+    gap: 8
+  },
+  categoryList: {
+    gap: 8,
+    paddingVertical: 2
+  },
+  categoryChip: {
+    borderWidth: 1,
+    borderColor: '#c8d5d0',
+    borderRadius: 999,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 14,
+    paddingVertical: 8
+  },
+  categoryChipSelected: {
+    borderColor: '#1f6f55',
+    backgroundColor: '#1f6f55'
+  },
+  categoryChipText: {
+    color: '#40524c'
+  },
+  categoryChipTextSelected: {
+    color: '#ffffff',
+    fontWeight: '700'
   },
   trackingBox: {
     alignItems: 'center',

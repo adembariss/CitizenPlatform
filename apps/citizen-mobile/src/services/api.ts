@@ -15,6 +15,12 @@ export type MunicipalityResolveResult = {
   failureReason: string | null;
 };
 
+export type PublicCategory = {
+  id: string;
+  name: string;
+  code: string;
+};
+
 export type CreateComplaintResponse = {
   complaintId: string;
   trackingCode: string;
@@ -48,6 +54,11 @@ async function readJson<T>(response: Response): Promise<ApiResponse<T>> {
 export async function resolveMunicipality(latitude: number, longitude: number): Promise<ApiResponse<MunicipalityResolveResult>> {
   const response = await fetch(`${API_BASE_URL}/api/public/municipalities/resolve?lat=${latitude}&lng=${longitude}`);
   return readJson<MunicipalityResolveResult>(response);
+}
+
+export async function getMunicipalityCategories(municipalityId: string): Promise<ApiResponse<PublicCategory[]>> {
+  const response = await fetch(`${API_BASE_URL}/api/public/municipalities/${municipalityId}/categories`);
+  return readJson<PublicCategory[]>(response);
 }
 
 export async function createComplaint(request: CreateComplaintRequest): Promise<ApiResponse<CreateComplaintResponse>> {
