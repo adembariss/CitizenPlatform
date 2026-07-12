@@ -9,8 +9,6 @@ type View =
   | { name: 'report' }
   | { name: 'track'; initialCode?: string };
 
-const ADMIN_URL = 'http://localhost:5173';
-
 export function App() {
   const [view, setView] = useState<View>({ name: 'home' });
 
@@ -39,9 +37,6 @@ export function App() {
           <button type="button" className={navClass(view.name === 'track')} onClick={() => goTrack()}>
             Şikayet Sorgula
           </button>
-          <a className="nav-link nav-admin" href={ADMIN_URL} target="_blank" rel="noreferrer">
-            Belediye Girişi
-          </a>
         </nav>
       </header>
 
@@ -83,9 +78,9 @@ export function App() {
               <button type="button" className="footer-link" onClick={() => goTrack()}>
                 Şikayet Sorgula
               </button>
-              <a className="footer-link" href={ADMIN_URL} target="_blank" rel="noreferrer">
-                Belediye Yönetim Paneli
-              </a>
+              <button type="button" className="footer-link" onClick={goHome}>
+                Ana Sayfa
+              </button>
             </div>
             <div>
               <h4>Acil Durumlar</h4>

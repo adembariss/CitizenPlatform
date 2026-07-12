@@ -59,6 +59,35 @@ public sealed class DevelopmentDataSeeder
         await GetOrCreateUserAsync(
             "employee@demo.local", "Demo Belediye Calisani", UserType.MunicipalityEmployee, municipalityEmployeeRole.Id, demoMunicipality.Id, cancellationToken);
 
+        // Her (demo dışı) belediye için ayrı bir yönetici ve çalışan hesabı.
+        // E-posta şeması: admin@{kod}.bel.tr ve memur@{kod}.bel.tr (kod küçük harf).
+        // Örn. Gelibolu için: admin@gelibolu.bel.tr / memur@gelibolu.bel.tr (parola: Demo123!).
+        var otherMunicipalities = await _dbContext.Municipalities
+            .Where(municipality => municipality.Code != DemoMunicipalityCode)
+            .OrderBy(municipality => municipality.Name)
+            .ToListAsync(cancellationToken);
+
+        foreach (var municipality in otherMunicipalities)
+        {
+            var codeSlug = municipality.Code.ToLowerInvariant();
+
+            await GetOrCreateUserAsync(
+                $"admin@{codeSlug}.bel.tr",
+                $"{municipality.Name} Yöneticisi",
+                UserType.MunicipalityAdmin,
+                municipalityAdminRole.Id,
+                municipality.Id,
+                cancellationToken);
+
+            await GetOrCreateUserAsync(
+                $"memur@{codeSlug}.bel.tr",
+                $"{municipality.Name} Çalışanı",
+                UserType.MunicipalityEmployee,
+                municipalityEmployeeRole.Id,
+                municipality.Id,
+                cancellationToken);
+        }
+
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
