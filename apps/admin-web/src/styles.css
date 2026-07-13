@@ -231,6 +231,26 @@ h1 {
   font-weight: 700;
 }
 
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 8px 16px;
+  border: 1px solid #c8d5d0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #24332f;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.back-button:hover {
+  border-color: #1f6f55;
+  color: #1f6f55;
+}
+
 .status-badge {
   display: inline-block;
   padding: 3px 10px;

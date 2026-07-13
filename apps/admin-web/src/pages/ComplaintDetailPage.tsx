@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   AdminComplaintDetail,
   ApiResponse,
@@ -32,6 +32,7 @@ function feedbackFromResponse(response: ApiResponse<unknown>, successText: strin
 
 export function ComplaintDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [detail, setDetail] = useState<AdminComplaintDetail | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -106,9 +107,12 @@ export function ComplaintDetailPage() {
   return (
     <>
       <header>
+        <button type="button" className="back-button" onClick={() => navigate(-1)}>
+          ← Geri
+        </button>
         <p>
           <Link className="inline-link" to="/complaints">
-            ← Şikayetler
+            Şikayetler
           </Link>{' '}
           / {detail.trackingCode}
         </p>
