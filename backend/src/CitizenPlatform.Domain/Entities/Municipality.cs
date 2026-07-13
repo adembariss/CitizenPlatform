@@ -25,6 +25,14 @@ public sealed class Municipality : AuditableEntity
 
     public bool IsActive { get; private set; }
 
+    // İl adı (adres seçici il→ilçe gruplaması için) ve belediye merkezinin yaklaşık
+    // koordinatı (adresten seçimde şikayet konumu olarak kullanılır). Seed ile doldurulur.
+    public string? Province { get; private set; }
+
+    public double? CenterLatitude { get; private set; }
+
+    public double? CenterLongitude { get; private set; }
+
     public IReadOnlyCollection<MunicipalityBoundary> Boundaries => _boundaries.AsReadOnly();
 
     public IReadOnlyCollection<Department> Departments => _departments.AsReadOnly();

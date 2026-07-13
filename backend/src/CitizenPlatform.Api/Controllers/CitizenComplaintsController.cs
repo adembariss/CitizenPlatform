@@ -79,7 +79,8 @@ public sealed class CitizenComplaintsController : ControllerBase
             IsAnonymous: false,
             ComplaintSource.CitizenWeb,
             Attachments: null,
-            RegisteredCitizenId: citizen.Id);
+            RegisteredCitizenId: citizen.Id,
+            MunicipalityId: request.MunicipalityId);
 
         var result = await _createHandler.HandleAsync(command, cancellationToken);
         if (!result.IsSuccess || result.Value is null)

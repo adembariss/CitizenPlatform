@@ -139,6 +139,7 @@ public sealed class CreateComplaintCommandHandlerTests
             var handler = new CreateComplaintCommandHandler(
                 new CreateComplaintCommandValidator(),
                 new FakeGeoMunicipalityResolver(resolveSuccess),
+                new FakeMunicipalityRepository(),
                 new FakeComplaintCategoryRepository(categoryAvailable),
                 new FakeDepartmentRepository(),
                 new FakeCategoryDepartmentRuleRepository(),
@@ -248,6 +249,18 @@ public sealed class CreateComplaintCommandHandlerTests
         {
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class FakeMunicipalityRepository : IMunicipalityRepository
+    {
+        public Task<Municipality?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+            => Task.FromResult<Municipality?>(null);
+
+        public Task<IReadOnlyList<string>> GetProvincesAsync(CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+
+        public Task<IReadOnlyList<DistrictRow>> GetDistrictsByProvinceAsync(string province, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<DistrictRow>>(Array.Empty<DistrictRow>());
     }
 
     private sealed class FakeCitizenRepository : ICitizenRepository

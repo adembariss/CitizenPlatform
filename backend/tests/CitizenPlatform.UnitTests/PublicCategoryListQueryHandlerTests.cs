@@ -71,6 +71,12 @@ public sealed class PublicCategoryListQueryHandlerTests
         {
             return Task.FromResult(_municipality?.Id == id ? _municipality : null);
         }
+
+        public Task<IReadOnlyList<string>> GetProvincesAsync(CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+
+        public Task<IReadOnlyList<DistrictRow>> GetDistrictsByProvinceAsync(string province, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<DistrictRow>>(Array.Empty<DistrictRow>());
     }
 
     private sealed class FakeComplaintCategoryRepository : IComplaintCategoryRepository

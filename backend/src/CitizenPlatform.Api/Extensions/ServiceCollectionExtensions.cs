@@ -13,6 +13,7 @@ using CitizenPlatform.Application.Features.CitizenAccounts;
 using CitizenPlatform.Application.Features.Complaints;
 using CitizenPlatform.Application.Features.PublicCategories;
 using CitizenPlatform.Application.Features.PublicInsights;
+using CitizenPlatform.Application.Features.PublicDirectory;
 using CitizenPlatform.Infrastructure;
 using CitizenPlatform.Infrastructure.Identity;
 using CitizenPlatform.Infrastructure.Storage;
@@ -102,6 +103,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<PublicCategoryListQueryHandler>();
         services.AddScoped<PublicStatsQueryHandler>();
         services.AddScoped<PublicComplaintMapQueryHandler>();
+        services.AddScoped<ProvinceListQueryHandler>();
+        services.AddScoped<DistrictListQueryHandler>();
         services.AddScoped<ComplaintAttachmentUploadService>();
         services.AddScoped<IValidator<CreateComplaintCommand>, CreateComplaintCommandValidator>();
         services.AddScoped<IValidator<AddComplaintAttachmentsCommand>, AddComplaintAttachmentsCommandValidator>();

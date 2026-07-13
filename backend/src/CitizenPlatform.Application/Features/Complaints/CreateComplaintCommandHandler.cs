@@ -19,6 +19,7 @@ public sealed class CreateComplaintCommandHandler
 
     private readonly IValidator<CreateComplaintCommand> _validator;
     private readonly IGeoMunicipalityResolver _geoMunicipalityResolver;
+    private readonly IMunicipalityRepository _municipalityRepository;
     private readonly IComplaintCategoryRepository _categoryRepository;
     private readonly IDepartmentRepository _departmentRepository;
     private readonly ICategoryDepartmentRuleRepository _categoryDepartmentRuleRepository;
@@ -33,6 +34,7 @@ public sealed class CreateComplaintCommandHandler
     public CreateComplaintCommandHandler(
         IValidator<CreateComplaintCommand> validator,
         IGeoMunicipalityResolver geoMunicipalityResolver,
+        IMunicipalityRepository municipalityRepository,
         IComplaintCategoryRepository categoryRepository,
         IDepartmentRepository departmentRepository,
         ICategoryDepartmentRuleRepository categoryDepartmentRuleRepository,
@@ -46,6 +48,7 @@ public sealed class CreateComplaintCommandHandler
     {
         _validator = validator;
         _geoMunicipalityResolver = geoMunicipalityResolver;
+        _municipalityRepository = municipalityRepository;
         _categoryRepository = categoryRepository;
         _departmentRepository = departmentRepository;
         _categoryDepartmentRuleRepository = categoryDepartmentRuleRepository;
@@ -70,15 +73,30 @@ public sealed class CreateComplaintCommandHandler
                 validationResult.Errors.Select(error => error.ErrorMessage).ToArray());
         }
 
-        var municipalityResult = await _geoMunicipalityResolver.ResolveByCoordinateAsync(
-            command.Latitude,
-            command.Longitude,
-            cancellationToken);
-
-        if (!municipalityResult.IsSuccess || municipalityResult.MunicipalityId is null)
+        MunicipalityResolveResult municipalityResult;
+        if (command.MunicipalityId is Guid selectedMunicipalityId)
         {
-            return Result<CreateComplaintResponseDto>.Failure(
-                municipalityResult.FailureReason ?? "Municipality could not be resolved.");
+            // Address selector: the citizen picked the municipality directly.
+            var municipality = await _municipalityRepository.GetByIdAsync(selectedMunicipalityId, cancellationToken);
+            if (municipality is null || !municipality.IsActive)
+            {
+                return Result<CreateComplaintResponseDto>.Failure("Seçilen belediye bulunamadı.");
+            }
+
+            municipalityResult = MunicipalityResolveResult.Success(municipality.Id, municipality.Name, municipality.Code);
+        }
+        else
+        {
+            municipalityResult = await _geoMunicipalityResolver.ResolveByCoordinateAsync(
+                command.Latitude,
+                command.Longitude,
+                cancellationToken);
+
+            if (!municipalityResult.IsSuccess || municipalityResult.MunicipalityId is null)
+            {
+                return Result<CreateComplaintResponseDto>.Failure(
+                    municipalityResult.FailureReason ?? "Municipality could not be resolved.");
+            }
         }
 
         var municipalityId = municipalityResult.MunicipalityId.Value;

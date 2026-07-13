@@ -13,4 +13,7 @@ public sealed record CreateComplaintRequestDto(
     double Longitude,
     string? AddressText,
     bool IsAnonymous,
-    ComplaintSource Source);
+    ComplaintSource Source,
+    // Opsiyonel: adres seçiciyle belediye doğrudan seçildiyse dolu gelir; boşsa
+    // belediye koordinattan çözümlenir.
+    Guid? MunicipalityId = null);

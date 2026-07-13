@@ -18,4 +18,7 @@ public sealed record CreateComplaintCommand(
     IReadOnlyCollection<ComplaintAttachmentUpload>? Attachments = null,
     // Set when an authenticated citizen submits: the complaint is linked to their
     // existing Citizen record instead of creating a new anonymous contact record.
-    Guid? RegisteredCitizenId = null);
+    Guid? RegisteredCitizenId = null,
+    // Set when the citizen picked the municipality directly (address selector):
+    // routing uses this id instead of resolving by coordinate (ST_Contains).
+    Guid? MunicipalityId = null);

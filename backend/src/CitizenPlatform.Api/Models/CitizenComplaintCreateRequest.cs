@@ -15,4 +15,7 @@ public sealed class CitizenComplaintCreateRequest
     public double Longitude { get; init; }
 
     public string? AddressText { get; init; }
+
+    // Opsiyonel: adres seçiciyle belediye doğrudan seçildiyse.
+    public Guid? MunicipalityId { get; init; }
 }

@@ -25,6 +25,16 @@ internal sealed class MunicipalityConfiguration : IEntityTypeConfiguration<Munic
             .HasColumnName("is_active")
             .IsRequired();
 
+        builder.Property(entity => entity.Province)
+            .HasColumnName("province")
+            .HasMaxLength(100);
+
+        builder.Property(entity => entity.CenterLatitude)
+            .HasColumnName("center_latitude");
+
+        builder.Property(entity => entity.CenterLongitude)
+            .HasColumnName("center_longitude");
+
         builder.HasIndex(entity => entity.Code)
             .IsUnique()
             .HasFilter("is_deleted = false");

@@ -103,5 +103,11 @@ public sealed class GetCurrentUserQueryHandlerTests
             Municipality? municipality = id == MunicipalityId ? Municipality.Create("Demo Belediyesi", "DEMO") : null;
             return Task.FromResult(municipality);
         }
+
+        public Task<IReadOnlyList<string>> GetProvincesAsync(CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+
+        public Task<IReadOnlyList<DistrictRow>> GetDistrictsByProvinceAsync(string province, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<DistrictRow>>(Array.Empty<DistrictRow>());
     }
 }

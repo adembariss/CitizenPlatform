@@ -44,7 +44,8 @@ public sealed class PublicComplaintsController : ControllerBase
             request.Longitude,
             request.AddressText,
             request.IsAnonymous,
-            request.Source);
+            request.Source,
+            MunicipalityId: request.MunicipalityId);
 
         var result = await _createComplaintHandler.HandleAsync(command, cancellationToken);
         return ToCreateResponse(result);
