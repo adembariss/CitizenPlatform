@@ -39,6 +39,15 @@ export type CreateComplaintRequest = {
   addressText?: string;
   isAnonymous: boolean;
   source: 'CitizenWeb';
+  municipalityId?: string;
+};
+
+export type District = {
+  id: string;
+  name: string;
+  code: string;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 export type ComplaintStatusHistoryEntry = {
@@ -71,8 +80,22 @@ export type TrackedComplaint = {
 };
 
 async function readJson<T>(response: Response): Promise<ApiResponse<T>> {
-  const body = (await response.json()) as ApiResponse<T>;
-  return body;
+  // Defensive: empty or non-JSON bodies (e.g. an empty 401) must not throw.
+  const text = await response.text();
+  if (!text) {
+    return {
+      success: response.ok,
+      data: null,
+      message: response.ok ? null : 'Bir hata oluştu. Lütfen tekrar deneyin.',
+      errors: []
+    };
+  }
+
+  try {
+    return JSON.parse(text) as ApiResponse<T>;
+  } catch {
+    return { success: false, data: null, message: 'Sunucu yanıtı okunamadı.', errors: [] };
+  }
 }
 
 export async function resolveMunicipality(latitude: number, longitude: number): Promise<ApiResponse<MunicipalityResolveResult>> {
@@ -83,6 +106,16 @@ export async function resolveMunicipality(latitude: number, longitude: number): 
 export async function getMunicipalityCategories(municipalityId: string): Promise<ApiResponse<PublicCategory[]>> {
   const response = await fetch(`/api/public/municipalities/${municipalityId}/categories`);
   return readJson<PublicCategory[]>(response);
+}
+
+export async function getProvinces(): Promise<ApiResponse<string[]>> {
+  const response = await fetch('/api/public/provinces');
+  return readJson<string[]>(response);
+}
+
+export async function getDistricts(province: string): Promise<ApiResponse<District[]>> {
+  const response = await fetch(`/api/public/districts?province=${encodeURIComponent(province)}`);
+  return readJson<District[]>(response);
 }
 
 export async function createComplaint(request: CreateComplaintRequest): Promise<ApiResponse<CreateComplaintResponse>> {
@@ -105,6 +138,7 @@ function buildComplaintForm(request: CreateComplaintRequest, files: File[]): For
   form.append('source', request.source);
 
   if (request.title) form.append('title', request.title);
+  if (request.municipalityId) form.append('municipalityId', request.municipalityId);
   if (request.citizenFullName) form.append('citizenFullName', request.citizenFullName);
   if (request.citizenPhoneNumber) form.append('citizenPhoneNumber', request.citizenPhoneNumber);
   if (request.citizenEmail) form.append('citizenEmail', request.citizenEmail);

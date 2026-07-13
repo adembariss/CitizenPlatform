@@ -47,6 +47,7 @@ export type CitizenComplaintPayload = {
   latitude: number;
   longitude: number;
   addressText?: string;
+  municipalityId?: string;
 };
 
 const ACCESS_KEY = 'citizen_access_token';
@@ -77,7 +78,23 @@ export function clearSession(): void {
 }
 
 async function readJson<T>(response: Response): Promise<ApiResponse<T>> {
-  return (await response.json()) as ApiResponse<T>;
+  // Some responses (e.g. a 401 from the [Authorize] filter) have an empty body,
+  // so response.json() would throw. Read defensively and map to an ApiResponse.
+  const text = await response.text();
+  if (!text) {
+    return {
+      success: response.ok,
+      data: null,
+      message: response.status === 401 ? 'Oturum süreniz doldu. Lütfen tekrar giriş yapın.' : response.ok ? null : 'Bir hata oluştu.',
+      errors: []
+    };
+  }
+
+  try {
+    return JSON.parse(text) as ApiResponse<T>;
+  } catch {
+    return { success: false, data: null, message: 'Sunucu yanıtı okunamadı.', errors: [] };
+  }
 }
 
 export async function registerCitizen(payload: RegisterPayload): Promise<ApiResponse<CitizenAuthResponse>> {

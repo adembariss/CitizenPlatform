@@ -4,8 +4,11 @@ import {
   createComplaint,
   createComplaintWithPhotos,
   getCurrentPosition,
+  getDistricts,
   getMunicipalityCategories,
+  getProvinces,
   resolveMunicipality,
+  District,
   PublicCategory
 } from '../lib/api';
 import { LatLng, LocationMap } from '../components/LocationMap';
@@ -37,6 +40,8 @@ type PhotoItem = {
   previewUrl: string;
 };
 
+type LocationMode = 'map' | 'address';
+
 type ReportFormProps = {
   onTrack: (trackingCode: string) => void;
 };
@@ -53,6 +58,11 @@ export function ReportForm({ onTrack }: ReportFormProps) {
   const [categoryId, setCategoryId] = useState('');
   const [citizenFullName, setCitizenFullName] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [mode, setMode] = useState<LocationMode>('map');
+  const [provinces, setProvinces] = useState<string[]>([]);
+  const [selectedProvince, setSelectedProvince] = useState('');
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [addressMunicipalityId, setAddressMunicipalityId] = useState<string | null>(null);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const photosRef = useRef<PhotoItem[]>([]);
@@ -67,7 +77,23 @@ export function ReportForm({ onTrack }: ReportFormProps) {
   }, []);
 
   useEffect(() => {
-    if (!position) {
+    let cancelled = false;
+    getProvinces()
+      .then((result) => {
+        if (!cancelled && result.success && result.data) {
+          setProvinces(result.data);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    // Coordinate resolution only applies to map mode; in address mode the
+    // municipality is chosen directly from the dropdown.
+    if (mode !== 'map' || !position) {
       return;
     }
 
@@ -102,7 +128,7 @@ export function ReportForm({ onTrack }: ReportFormProps) {
     return () => {
       cancelled = true;
     };
-  }, [position]);
+  }, [position, mode]);
 
   const municipalityId = municipality.status === 'resolved' ? municipality.municipalityId : null;
 
@@ -135,6 +161,55 @@ export function ReportForm({ onTrack }: ReportFormProps) {
       cancelled = true;
     };
   }, [municipalityId]);
+
+  function handleModeChange(nextMode: LocationMode) {
+    setMode(nextMode);
+    setPosition(null);
+    setMunicipality({ status: 'idle' });
+    setCategoriesState({ status: 'idle' });
+    setAddressMunicipalityId(null);
+    setSelectedProvince('');
+    setDistricts([]);
+  }
+
+  function handleProvinceChange(province: string) {
+    setSelectedProvince(province);
+    setAddressMunicipalityId(null);
+    setDistricts([]);
+    setMunicipality({ status: 'idle' });
+    setCategoriesState({ status: 'idle' });
+    setPosition(null);
+
+    if (!province) {
+      return;
+    }
+
+    getDistricts(province)
+      .then((result) => {
+        if (result.success && result.data) {
+          setDistricts(result.data);
+        }
+      })
+      .catch(() => undefined);
+  }
+
+  function handleDistrictChange(districtId: string) {
+    setAddressMunicipalityId(districtId || null);
+
+    const district = districts.find((item) => item.id === districtId);
+    if (!district) {
+      setMunicipality({ status: 'idle' });
+      setCategoriesState({ status: 'idle' });
+      setPosition(null);
+      return;
+    }
+
+    setMunicipality({ status: 'resolved', municipalityId: district.id, municipalityName: district.name });
+    if (district.latitude != null && district.longitude != null) {
+      // Use the district centre as the complaint location in address mode.
+      setPosition({ latitude: district.latitude, longitude: district.longitude });
+    }
+  }
 
   async function handleUseMyLocation() {
     setLocating(true);
@@ -193,6 +268,7 @@ export function ReportForm({ onTrack }: ReportFormProps) {
 
     setSubmit({ status: 'submitting' });
 
+    try {
     // Logged-in citizens: attach the complaint to their account via the authenticated
     // JSON endpoint, then upload any photos through the public attachments endpoint.
     if (isAuthenticated && token) {
@@ -201,7 +277,8 @@ export function ReportForm({ onTrack }: ReportFormProps) {
         title: title || undefined,
         description,
         latitude: position.latitude,
-        longitude: position.longitude
+        longitude: position.longitude,
+        municipalityId: addressMunicipalityId ?? undefined
       });
 
       if (!authedResult.success || !authedResult.data) {
@@ -227,7 +304,8 @@ export function ReportForm({ onTrack }: ReportFormProps) {
       latitude: position.latitude,
       longitude: position.longitude,
       isAnonymous,
-      source: 'CitizenWeb' as const
+      source: 'CitizenWeb' as const,
+      municipalityId: addressMunicipalityId ?? undefined
     };
 
     const result =
@@ -244,6 +322,9 @@ export function ReportForm({ onTrack }: ReportFormProps) {
     }
 
     setSubmit({ status: 'success', trackingCode: result.data.trackingCode });
+    } catch {
+      setSubmit({ status: 'error', message: 'Bildirim gönderilirken bir hata oluştu. Lütfen tekrar deneyin.' });
+    }
   }
 
   if (submit.status === 'success') {
@@ -278,17 +359,68 @@ export function ReportForm({ onTrack }: ReportFormProps) {
       <form className="report-form" onSubmit={handleSubmit}>
         <div className="map-field">
           <span className="map-field-label">Konum</span>
-          <LocationMap position={position} onPick={setPosition} />
-          <div className="map-toolbar">
-            <button type="button" className="secondary-button" onClick={handleUseMyLocation} disabled={locating}>
-              {locating ? 'Konum alınıyor...' : 'Konumumu kullan'}
+          <div className="mode-toggle" role="tablist" aria-label="Konum seçme yöntemi">
+            <button
+              type="button"
+              className={mode === 'map' ? 'mode-btn active' : 'mode-btn'}
+              onClick={() => handleModeChange('map')}
+            >
+              Haritadan seç
             </button>
-            <span className="map-hint">
-              {position
-                ? `Seçilen konum: ${position.latitude.toFixed(5)}, ${position.longitude.toFixed(5)}`
-                : 'Haritaya tıklayarak da konum seçebilirsiniz.'}
-            </span>
+            <button
+              type="button"
+              className={mode === 'address' ? 'mode-btn active' : 'mode-btn'}
+              onClick={() => handleModeChange('address')}
+            >
+              Adresten seç (İl / İlçe)
+            </button>
           </div>
+
+          {mode === 'map' ? (
+            <>
+              <LocationMap position={position} onPick={setPosition} />
+              <div className="map-toolbar">
+                <button type="button" className="secondary-button" onClick={handleUseMyLocation} disabled={locating}>
+                  {locating ? 'Konum alınıyor...' : 'Konumumu kullan'}
+                </button>
+                <span className="map-hint">
+                  {position
+                    ? `Seçilen konum: ${position.latitude.toFixed(5)}, ${position.longitude.toFixed(5)}`
+                    : 'Haritaya tıklayarak da konum seçebilirsiniz.'}
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="address-selects">
+              <label>
+                İl
+                <select value={selectedProvince} onChange={(event) => handleProvinceChange(event.target.value)}>
+                  <option value="">İl seçin</option>
+                  {provinces.map((province) => (
+                    <option key={province} value={province}>
+                      {province}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                İlçe / Belediye
+                <select
+                  value={addressMunicipalityId ?? ''}
+                  onChange={(event) => handleDistrictChange(event.target.value)}
+                  disabled={!selectedProvince || districts.length === 0}
+                >
+                  <option value="">{selectedProvince ? 'İlçe seçin' : 'Önce il seçin'}</option>
+                  {districts.map((district) => (
+                    <option key={district.id} value={district.id}>
+                      {district.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+
           {municipality.status === 'resolving' && <p className="map-status">Belediye sorgulanıyor...</p>}
           {municipality.status === 'resolved' && (
             <p className="map-status resolved">
