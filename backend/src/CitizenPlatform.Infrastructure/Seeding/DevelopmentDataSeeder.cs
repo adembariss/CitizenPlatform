@@ -69,7 +69,9 @@ public sealed class DevelopmentDataSeeder
 
         foreach (var municipality in otherMunicipalities)
         {
-            var codeSlug = municipality.Code.ToLowerInvariant();
+            // Underscores are invalid in e-mail domains (browser type="email" rejects them),
+            // so map them to hyphens: IST_KADIKOY -> admin@ist-kadikoy.bel.tr.
+            var codeSlug = municipality.Code.ToLowerInvariant().Replace('_', '-');
 
             await GetOrCreateUserAsync(
                 $"admin@{codeSlug}.bel.tr",
