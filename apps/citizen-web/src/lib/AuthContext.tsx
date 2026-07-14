@@ -10,12 +10,16 @@ import {
   storeSession
 } from './auth';
 
+export type RegisterOutcome =
+  | { errors: string[] }
+  | { ok: true; phoneVerified: boolean; codePreview: string | null };
+
 type AuthContextValue = {
   user: CitizenUser | null;
   token: string | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<string | null>;
-  register: (payload: RegisterPayload) => Promise<string[] | null>;
+  register: (payload: RegisterPayload) => Promise<RegisterOutcome>;
   logout: () => void;
 };
 
@@ -43,12 +47,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register: async (payload) => {
         const result = await registerCitizen(payload);
         if (!result.success || !result.data) {
-          return result.errors.length > 0 ? result.errors : [result.message ?? 'Kayıt yapılamadı.'];
+          return { errors: result.errors.length > 0 ? result.errors : [result.message ?? 'Kayıt yapılamadı.'] };
         }
         storeSession(result.data);
         setUser(result.data.user);
         setToken(result.data.accessToken);
-        return null;
+        return { ok: true, phoneVerified: result.data.phoneVerified, codePreview: result.data.verificationCodePreview };
       },
       logout: () => {
         clearSession();

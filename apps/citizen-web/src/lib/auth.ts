@@ -13,6 +13,8 @@ export type CitizenAuthResponse = {
   user: CitizenUser;
   refreshToken: string;
   refreshTokenExpiresAt: string;
+  phoneVerified: boolean;
+  verificationCodePreview: string | null;
 };
 
 export type CitizenProfile = {
@@ -113,6 +115,23 @@ export async function loginCitizen(email: string, password: string): Promise<Api
     body: JSON.stringify({ email, password })
   });
   return readJson<CitizenAuthResponse>(response);
+}
+
+export async function verifyPhone(token: string, code: string): Promise<ApiResponse<unknown>> {
+  const response = await fetch('/api/citizen/auth/verify-phone', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ code })
+  });
+  return readJson<unknown>(response);
+}
+
+export async function resendCode(token: string): Promise<ApiResponse<{ verificationCodePreview: string | null }>> {
+  const response = await fetch('/api/citizen/auth/resend-code', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return readJson<{ verificationCodePreview: string | null }>(response);
 }
 
 export async function getMyComplaints(token: string): Promise<ApiResponse<MyComplaint[]>> {

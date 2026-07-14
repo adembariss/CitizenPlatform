@@ -4,9 +4,10 @@ import { useAuth } from '../lib/AuthContext';
 type RegisterViewProps = {
   onSuccess: () => void;
   onLogin: () => void;
+  onVerify: (codePreview: string | null) => void;
 };
 
-export function RegisterView({ onSuccess, onLogin }: RegisterViewProps) {
+export function RegisterView({ onSuccess, onLogin, onVerify }: RegisterViewProps) {
   const { register } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -26,8 +27,12 @@ export function RegisterView({ onSuccess, onLogin }: RegisterViewProps) {
       fullName: fullName.trim() || undefined
     });
     setBusy(false);
-    if (result) {
-      setErrors(result);
+    if ('errors' in result) {
+      setErrors(result.errors);
+      return;
+    }
+    if (!result.phoneVerified) {
+      onVerify(result.codePreview);
       return;
     }
     onSuccess();

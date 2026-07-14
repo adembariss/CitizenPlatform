@@ -4,6 +4,7 @@ import { ReportForm } from './views/ReportForm';
 import { TrackComplaint } from './views/TrackComplaint';
 import { LoginView } from './views/LoginView';
 import { RegisterView } from './views/RegisterView';
+import { VerifyPhoneView } from './views/VerifyPhoneView';
 import { MyComplaints } from './views/MyComplaints';
 import { BrandMark } from './components/BrandMark';
 import { useAuth } from './lib/AuthContext';
@@ -14,6 +15,7 @@ type View =
   | { name: 'track'; initialCode?: string }
   | { name: 'login' }
   | { name: 'register' }
+  | { name: 'verify'; codePreview: string | null }
   | { name: 'mine' };
 
 export function App() {
@@ -25,6 +27,7 @@ export function App() {
   const goTrack = (initialCode?: string) => setView({ name: 'track', initialCode });
   const goLogin = () => setView({ name: 'login' });
   const goRegister = () => setView({ name: 'register' });
+  const goVerify = (codePreview: string | null) => setView({ name: 'verify', codePreview });
   const goMine = () => setView({ name: 'mine' });
 
   return (
@@ -92,7 +95,13 @@ export function App() {
 
         {view.name === 'register' && (
           <div className="page">
-            <RegisterView onSuccess={goMine} onLogin={goLogin} />
+            <RegisterView onSuccess={goMine} onLogin={goLogin} onVerify={goVerify} />
+          </div>
+        )}
+
+        {view.name === 'verify' && (
+          <div className="page">
+            <VerifyPhoneView codePreview={view.codePreview} onVerified={goMine} onSkip={goMine} />
           </div>
         )}
 

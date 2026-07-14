@@ -1123,6 +1123,12 @@ select:focus {
   list-style: none;
 }
 
+.verify-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .mine-header {
   display: flex;
   align-items: center;
