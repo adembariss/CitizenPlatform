@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   District,
   Pharmacy,
@@ -21,6 +21,13 @@ export function PharmaciesView() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [nearbyMode, setNearbyMode] = useState(false);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const mapWrapperRef = useRef<HTMLDivElement | null>(null);
+
+  function handleFocus(id: string) {
+    setFocusedId(id);
+    mapWrapperRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 
   useEffect(() => {
     getProvinces()
@@ -156,24 +163,35 @@ export function PharmaciesView() {
           )}
         </div>
 
-        <PharmacyMap pharmacies={pharmacies} userLocation={userLocation} />
+        <div ref={mapWrapperRef}>
+          <PharmacyMap pharmacies={pharmacies} userLocation={userLocation} focusId={focusedId} />
+        </div>
 
-        <p className="field-hint">{pharmacies.length} eczane gösteriliyor{nearbyMode ? ' (en yakından uzağa)' : ''}.</p>
+        <p className="field-hint">
+          {pharmacies.length} eczane gösteriliyor{nearbyMode ? ' (en yakından uzağa)' : ''}. Bir eczaneye
+          tıklayınca harita oraya gider.
+        </p>
 
         <ul className="pharmacy-list">
           {pharmacies.slice(0, 30).map((pharmacy) => (
-            <li key={pharmacy.id} className="pharmacy-item">
-              <div className="pharmacy-item-top">
-                <span className="pharmacy-name">{pharmacy.name}</span>
-                {pharmacy.isOnDuty && <span className="status-badge status-resolved">Nöbetçi</span>}
-              </div>
-              <div className="pharmacy-item-meta">
-                <span>
-                  {pharmacy.province} · {pharmacy.district}
+            <li key={pharmacy.id}>
+              <button
+                type="button"
+                className={`pharmacy-item pharmacy-item-button${focusedId === pharmacy.id ? ' is-focused' : ''}`}
+                onClick={() => handleFocus(pharmacy.id)}
+              >
+                <span className="pharmacy-item-top">
+                  <span className="pharmacy-name">{pharmacy.name}</span>
+                  {pharmacy.isOnDuty && <span className="status-badge status-resolved">Nöbetçi</span>}
                 </span>
-                {pharmacy.distanceKm != null && <span>{pharmacy.distanceKm} km</span>}
-                {pharmacy.phoneNumber && <span>{pharmacy.phoneNumber}</span>}
-              </div>
+                <span className="pharmacy-item-meta">
+                  <span>
+                    {pharmacy.province} · {pharmacy.district}
+                  </span>
+                  {pharmacy.distanceKm != null && <span>{pharmacy.distanceKm} km</span>}
+                  {pharmacy.phoneNumber && <span>{pharmacy.phoneNumber}</span>}
+                </span>
+              </button>
             </li>
           ))}
         </ul>

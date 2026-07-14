@@ -1165,6 +1165,21 @@ select:focus {
   background: var(--nc-tint-2);
 }
 
+.pharmacy-item-button {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pharmacy-item-button:hover,
+.pharmacy-item-button.is-focused {
+  border-color: var(--nc-blue);
+  box-shadow: var(--nc-shadow-sm);
+}
+
 .pharmacy-item-top {
   display: flex;
   align-items: center;
