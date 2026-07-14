@@ -46,3 +46,6 @@ coverage/
 
 # Runtime file storage (local provider uploads)
 backend/src/CitizenPlatform.Api/storage/
+
+# Production publish output
+/publish/
