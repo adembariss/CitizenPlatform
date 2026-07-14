@@ -62,8 +62,11 @@ public sealed class DevelopmentDataSeeder
         // Her (demo dışı) belediye için ayrı bir yönetici ve çalışan hesabı.
         // E-posta şeması: admin@{kod}.bel.tr ve memur@{kod}.bel.tr (kod küçük harf).
         // Örn. Gelibolu için: admin@gelibolu.bel.tr / memur@gelibolu.bel.tr (parola: Demo123!).
+        // Toplu içe aktarılan ilçeler (TR_*) için personel hesabı üretilmez; bunlar
+        // ~1820 kullanıcı + parola hash'lemesiyle açılışı dakikalarca yavaşlatırdı.
+        // Bu belediyelerin şikayetleri Sistem Yöneticisi (systemadmin) tarafından görülür.
         var otherMunicipalities = await _dbContext.Municipalities
-            .Where(municipality => municipality.Code != DemoMunicipalityCode)
+            .Where(municipality => municipality.Code != DemoMunicipalityCode && !municipality.Code.StartsWith("TR_"))
             .OrderBy(municipality => municipality.Name)
             .ToListAsync(cancellationToken);
 
