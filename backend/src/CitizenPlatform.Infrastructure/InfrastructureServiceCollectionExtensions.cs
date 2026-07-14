@@ -59,7 +59,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ITrackingCodeGenerator, TrackingCodeGenerator>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
-        services.AddScoped<ISmsSender, LoggingSmsSender>();
+        RegisterSmsSender(services, configuration);
         services.AddScoped<IMunicipalityRepository, MunicipalityRepository>();
         services.AddScoped<IAdminComplaintQueryRepository, AdminComplaintQueryRepository>();
         services.AddScoped<IPublicComplaintTrackingRepository, PublicComplaintTrackingRepository>();
@@ -70,5 +70,21 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<DevelopmentDataSeeder>();
 
         return services;
+    }
+
+    private static void RegisterSmsSender(IServiceCollection services, IConfiguration configuration)
+    {
+        var smsOptions = configuration.GetSection(SmsOptions.SectionName).Get<SmsOptions>() ?? new SmsOptions();
+
+        if (string.Equals(smsOptions.Provider, "Netgsm", StringComparison.OrdinalIgnoreCase) && smsOptions.Netgsm.IsConfigured)
+        {
+            services.AddSingleton(smsOptions.Netgsm);
+            services.AddHttpClient<ISmsSender, NetgsmSmsSender>();
+        }
+        else
+        {
+            // Varsayılan / geliştirme: SMS'i loglar ve kodu ifşa eder (demo UI için).
+            services.AddScoped<ISmsSender, LoggingSmsSender>();
+        }
     }
 }
