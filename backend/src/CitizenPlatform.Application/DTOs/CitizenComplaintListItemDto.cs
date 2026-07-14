@@ -16,4 +16,5 @@ public sealed record CitizenProfileDto(
     Guid Id,
     string FullName,
     string Email,
-    string? PhoneNumber);
+    string? PhoneNumber,
+    bool PhoneVerified);

@@ -27,6 +27,17 @@ internal sealed class CitizenConfiguration : IEntityTypeConfiguration<Citizen>
             .HasColumnName("email")
             .HasMaxLength(320);
 
+        builder.Property(entity => entity.PhoneVerified)
+            .HasColumnName("phone_verified")
+            .IsRequired();
+
+        builder.Property(entity => entity.PhoneVerificationCode)
+            .HasColumnName("phone_verification_code")
+            .HasMaxLength(12);
+
+        builder.Property(entity => entity.PhoneVerificationExpiresAt)
+            .HasColumnName("phone_verification_expires_at");
+
         builder.HasIndex(entity => entity.UserId)
             .IsUnique()
             .HasFilter("user_id IS NOT NULL AND is_deleted = false");

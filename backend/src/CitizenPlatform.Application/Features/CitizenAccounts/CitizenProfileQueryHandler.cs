@@ -20,6 +20,6 @@ public sealed class CitizenProfileQueryHandler
             return null;
         }
 
-        return new CitizenProfileDto(citizen.Id, citizen.FullName, citizen.Email ?? string.Empty, citizen.PhoneNumber);
+        return new CitizenProfileDto(citizen.Id, citizen.FullName, citizen.Email ?? string.Empty, citizen.PhoneNumber, citizen.PhoneVerified);
     }
 }

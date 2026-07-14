@@ -1,6 +1,7 @@
 using CitizenPlatform.Application.Abstractions;
 using CitizenPlatform.Infrastructure.Geospatial;
 using CitizenPlatform.Infrastructure.Identity;
+using CitizenPlatform.Infrastructure.Notifications;
 using CitizenPlatform.Infrastructure.Persistence;
 using CitizenPlatform.Infrastructure.Persistence.Repositories;
 using CitizenPlatform.Infrastructure.Seeding;
@@ -58,6 +59,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ITrackingCodeGenerator, TrackingCodeGenerator>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+        services.AddScoped<ISmsSender, LoggingSmsSender>();
         services.AddScoped<IMunicipalityRepository, MunicipalityRepository>();
         services.AddScoped<IAdminComplaintQueryRepository, AdminComplaintQueryRepository>();
         services.AddScoped<IPublicComplaintTrackingRepository, PublicComplaintTrackingRepository>();

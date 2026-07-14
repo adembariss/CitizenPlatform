@@ -1,5 +1,6 @@
 using CitizenPlatform.Api.Authorization;
 using CitizenPlatform.Api.Extensions;
+using CitizenPlatform.Api.Models;
 using CitizenPlatform.Application.Abstractions;
 using CitizenPlatform.Application.Common.Models;
 using CitizenPlatform.Application.DTOs;
@@ -20,33 +21,78 @@ public sealed class CitizenAuthController : ControllerBase
     private readonly RegisterCitizenCommandHandler _registerHandler;
     private readonly LoginCommandHandler _loginHandler;
     private readonly CitizenProfileQueryHandler _profileHandler;
+    private readonly VerifyPhoneCommandHandler _verifyPhoneHandler;
+    private readonly ResendCodeCommandHandler _resendCodeHandler;
     private readonly ICurrentUserService _currentUser;
 
     public CitizenAuthController(
         RegisterCitizenCommandHandler registerHandler,
         LoginCommandHandler loginHandler,
         CitizenProfileQueryHandler profileHandler,
+        VerifyPhoneCommandHandler verifyPhoneHandler,
+        ResendCodeCommandHandler resendCodeHandler,
         ICurrentUserService currentUser)
     {
         _registerHandler = registerHandler;
         _loginHandler = loginHandler;
         _profileHandler = profileHandler;
+        _verifyPhoneHandler = verifyPhoneHandler;
+        _resendCodeHandler = resendCodeHandler;
         _currentUser = currentUser;
     }
 
     [HttpPost("register")]
     [EnableRateLimiting(RateLimitingPolicyNames.AuthLogin)]
-    public async Task<ActionResult<ApiResponse<LoginResponseDto>>> Register(
+    public async Task<ActionResult<ApiResponse<CitizenAuthResultDto>>> Register(
         [FromBody] RegisterCitizenCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _registerHandler.HandleAsync(command, cancellationToken);
         if (!result.IsSuccess || result.Value is null)
         {
-            return BadRequest(ApiResponse<LoginResponseDto>.Fail(result.Error ?? "Kayıt yapılamadı.", result.Errors));
+            return BadRequest(ApiResponse<CitizenAuthResultDto>.Fail(result.Error ?? "Kayıt yapılamadı.", result.Errors));
         }
 
-        return StatusCode(StatusCodes.Status201Created, ApiResponse<LoginResponseDto>.Ok(result.Value));
+        return StatusCode(StatusCodes.Status201Created, ApiResponse<CitizenAuthResultDto>.Ok(result.Value));
+    }
+
+    [HttpPost("verify-phone")]
+    [Authorize(Policy = AuthorizationPolicyNames.RequireCitizen)]
+    public async Task<ActionResult<ApiResponse<object?>>> VerifyPhone(
+        [FromBody] VerifyPhoneRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (_currentUser.UserGuid is not Guid userId)
+        {
+            return Unauthorized(ApiResponse<object?>.Fail("Geçersiz oturum."));
+        }
+
+        var result = await _verifyPhoneHandler.HandleAsync(new VerifyPhoneCommand(userId, request.Code ?? string.Empty), cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return BadRequest(ApiResponse<object?>.Fail(result.Error ?? "Doğrulama başarısız."));
+        }
+
+        return Ok(ApiResponse<object?>.Ok(null, "Telefon doğrulandı."));
+    }
+
+    [HttpPost("resend-code")]
+    [Authorize(Policy = AuthorizationPolicyNames.RequireCitizen)]
+    [EnableRateLimiting(RateLimitingPolicyNames.AuthLogin)]
+    public async Task<ActionResult<ApiResponse<ResendCodeResult>>> ResendCode(CancellationToken cancellationToken)
+    {
+        if (_currentUser.UserGuid is not Guid userId)
+        {
+            return Unauthorized(ApiResponse<ResendCodeResult>.Fail("Geçersiz oturum."));
+        }
+
+        var result = await _resendCodeHandler.HandleAsync(new ResendCodeCommand(userId), cancellationToken);
+        if (!result.IsSuccess || result.Value is null)
+        {
+            return BadRequest(ApiResponse<ResendCodeResult>.Fail(result.Error ?? "Kod gönderilemedi."));
+        }
+
+        return Ok(ApiResponse<ResendCodeResult>.Ok(result.Value));
     }
 
     [HttpPost("login")]

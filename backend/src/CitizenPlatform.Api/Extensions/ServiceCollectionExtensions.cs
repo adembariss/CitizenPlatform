@@ -124,6 +124,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<RegisterCitizenCommandHandler>();
         services.AddScoped<CitizenComplaintListQueryHandler>();
         services.AddScoped<CitizenProfileQueryHandler>();
+        services.AddScoped<VerifyPhoneCommandHandler>();
+        services.AddScoped<ResendCodeCommandHandler>();
         services.AddScoped<IValidator<RegisterCitizenCommand>, RegisterCitizenCommandValidator>();
     }
 
