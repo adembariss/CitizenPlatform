@@ -11,4 +11,5 @@ public sealed record AdminComplaintListQuery(
     string? Search,
     int Page,
     int PageSize,
-    Guid? MunicipalityId);
+    Guid? MunicipalityId,
+    string? Province = null);

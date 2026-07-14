@@ -34,6 +34,11 @@ public sealed class AdminComplaintQueryRepository : IAdminComplaintQueryReposito
             query = query.Where(row => row.complaint.MunicipalityId == criteria.MunicipalityId);
         }
 
+        if (!string.IsNullOrWhiteSpace(criteria.Province))
+        {
+            query = query.Where(row => row.municipality.Province == criteria.Province);
+        }
+
         if (criteria.Status is not null)
         {
             query = query.Where(row => row.complaint.Status == criteria.Status);

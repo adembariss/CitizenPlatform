@@ -50,6 +50,7 @@ export type AdminComplaintFilters = {
   status?: string;
   categoryId?: string;
   search?: string;
+  province?: string;
   page?: number;
   pageSize?: number;
 };
@@ -228,6 +229,9 @@ export async function getAdminComplaints(filters: AdminComplaintFilters = {}): P
   if (filters.search?.trim()) {
     params.set('search', filters.search.trim());
   }
+  if (filters.province) {
+    params.set('province', filters.province);
+  }
 
   const response = await authorizedFetch(`/api/admin/complaints?${params.toString()}`);
   if (!response.ok) {
@@ -264,6 +268,15 @@ export async function addComplaintComment(
 ): Promise<ApiResponse<AdminComplaintComment>> {
   const response = await authorizedFetch(`/api/admin/complaints/${id}/comments`, jsonInit('POST', body));
   return readEnvelope<AdminComplaintComment>(response);
+}
+
+export async function getProvinces(): Promise<string[]> {
+  const response = await fetch('/api/public/provinces');
+  if (!response.ok) {
+    return [];
+  }
+  const body = (await response.json()) as ApiResponse<string[]>;
+  return body.data ?? [];
 }
 
 export async function getCategories(): Promise<ApiResponse<Category[]>> {

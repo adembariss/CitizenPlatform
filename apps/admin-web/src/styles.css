@@ -200,7 +200,7 @@ h1 {
 }
 
 .table-row-complaints {
-  grid-template-columns: 1.1fr 1.6fr 1fr 1fr 1fr 1fr;
+  grid-template-columns: 1.1fr 1.5fr 1fr 1fr 1fr 0.9fr 1fr;
 }
 
 .table-row-2col {

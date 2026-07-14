@@ -12,7 +12,8 @@ public sealed record AdminComplaintSearchCriteria(
     DateTimeOffset? DateTo,
     string? Search,
     int Page,
-    int PageSize);
+    int PageSize,
+    string? Province = null);
 
 public sealed record AdminComplaintListRow(
     Guid Id,

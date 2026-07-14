@@ -52,9 +52,10 @@ public sealed class AdminComplaintsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         [FromQuery] Guid? municipalityId = null,
+        [FromQuery] string? province = null,
         CancellationToken cancellationToken = default)
     {
-        var query = new AdminComplaintListQuery(status, categoryId, departmentId, dateFrom, dateTo, search, page, pageSize, municipalityId);
+        var query = new AdminComplaintListQuery(status, categoryId, departmentId, dateFrom, dateTo, search, page, pageSize, municipalityId, province);
         var response = await _listHandler.HandleAsync(query, TenantScope.From(_currentUserService), cancellationToken);
 
         return Ok(response);
