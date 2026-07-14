@@ -6,6 +6,7 @@ import { LoginView } from './views/LoginView';
 import { RegisterView } from './views/RegisterView';
 import { VerifyPhoneView } from './views/VerifyPhoneView';
 import { MyComplaints } from './views/MyComplaints';
+import { PharmaciesView } from './views/PharmaciesView';
 import { BrandMark } from './components/BrandMark';
 import { useAuth } from './lib/AuthContext';
 
@@ -13,6 +14,7 @@ type View =
   | { name: 'home' }
   | { name: 'report' }
   | { name: 'track'; initialCode?: string }
+  | { name: 'pharmacies' }
   | { name: 'login' }
   | { name: 'register' }
   | { name: 'verify'; codePreview: string | null }
@@ -25,6 +27,7 @@ export function App() {
   const goHome = () => setView({ name: 'home' });
   const goReport = () => setView({ name: 'report' });
   const goTrack = (initialCode?: string) => setView({ name: 'track', initialCode });
+  const goPharmacies = () => setView({ name: 'pharmacies' });
   const goLogin = () => setView({ name: 'login' });
   const goRegister = () => setView({ name: 'register' });
   const goVerify = (codePreview: string | null) => setView({ name: 'verify', codePreview });
@@ -50,6 +53,9 @@ export function App() {
           </button>
           <button type="button" className={navClass(view.name === 'track')} onClick={() => goTrack()}>
             Şikayet Sorgula
+          </button>
+          <button type="button" className={navClass(view.name === 'pharmacies')} onClick={goPharmacies}>
+            Eczaneler
           </button>
           {isAuthenticated ? (
             <button type="button" className={navClass(view.name === 'mine')} onClick={goMine}>
@@ -83,6 +89,14 @@ export function App() {
           <div className="page">
             <div className="track-shell">
               <TrackComplaint initialCode={view.initialCode} />
+            </div>
+          </div>
+        )}
+
+        {view.name === 'pharmacies' && (
+          <div className="page">
+            <div className="track-shell">
+              <PharmaciesView />
             </div>
           </div>
         )}

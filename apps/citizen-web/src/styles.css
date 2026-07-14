@@ -1129,6 +1129,62 @@ select:focus {
   gap: 12px;
 }
 
+/* Eczaneler */
+.pharmacy-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 14px;
+}
+
+.inline-select {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+  color: var(--nc-text);
+}
+
+.inline-select select {
+  min-width: 150px;
+}
+
+.pharmacy-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pharmacy-item {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--nc-line);
+  border-radius: 12px;
+  background: var(--nc-tint-2);
+}
+
+.pharmacy-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pharmacy-name {
+  font-weight: 700;
+  color: var(--nc-text);
+}
+
+.pharmacy-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--nc-muted);
+  font-size: 14px;
+}
+
 .mine-header {
   display: flex;
   align-items: center;

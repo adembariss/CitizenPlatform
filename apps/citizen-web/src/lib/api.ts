@@ -113,6 +113,43 @@ export async function getProvinces(): Promise<ApiResponse<string[]>> {
   return readJson<string[]>(response);
 }
 
+export type Pharmacy = {
+  id: string;
+  name: string;
+  province: string;
+  district: string;
+  addressText: string | null;
+  phoneNumber: string | null;
+  latitude: number;
+  longitude: number;
+  isOnDuty: boolean;
+  distanceKm: number | null;
+};
+
+export async function getPharmacies(params: {
+  province?: string;
+  district?: string;
+  onDutyOnly?: boolean;
+}): Promise<ApiResponse<Pharmacy[]>> {
+  const query = new URLSearchParams();
+  if (params.province) query.set('province', params.province);
+  if (params.district) query.set('district', params.district);
+  if (params.onDutyOnly) query.set('onDutyOnly', 'true');
+  const response = await fetch(`/api/public/pharmacies?${query.toString()}`);
+  return readJson<Pharmacy[]>(response);
+}
+
+export async function getNearbyPharmacies(
+  latitude: number,
+  longitude: number,
+  onDutyOnly: boolean
+): Promise<ApiResponse<Pharmacy[]>> {
+  const query = new URLSearchParams({ lat: String(latitude), lng: String(longitude), limit: '20' });
+  if (onDutyOnly) query.set('onDutyOnly', 'true');
+  const response = await fetch(`/api/public/pharmacies/nearby?${query.toString()}`);
+  return readJson<Pharmacy[]>(response);
+}
+
 export async function getDistricts(province: string): Promise<ApiResponse<District[]>> {
   const response = await fetch(`/api/public/districts?province=${encodeURIComponent(province)}`);
   return readJson<District[]>(response);
