@@ -12,6 +12,10 @@ const config = getDefaultConfig(projectRoot);
 config.watchFolders = [workspaceRoot];
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
+  // react-native bu workspace'te app düzeyinde kaldığından bazı bağımlılıkları
+  // (ör. @react-native/virtualized-lists — Modal/FlatList için) kendi node_modules'ı
+  // altında iç içe kurulur. disableHierarchicalLookup açıkken bunları da görebilmek için ekli.
+  path.resolve(projectRoot, 'node_modules/react-native/node_modules'),
   path.resolve(workspaceRoot, 'node_modules')
 ];
 config.resolver.disableHierarchicalLookup = true;

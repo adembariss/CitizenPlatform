@@ -1,20 +1,27 @@
 {
   "expo": {
-    "name": "CitizenPlatform",
+    "name": "Belediyem",
     "slug": "citizen-platform",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "scheme": "citizenplatform",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#f4f8fe",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#12235c"
+    },
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Şikayet konumunuzu belirlemek için konumunuza ihtiyacımız var."
+        "NSLocationWhenInUseUsageDescription": "Şikayet konumunuzu ve en yakın nöbetçi eczaneyi belirlemek için konumunuza ihtiyacımız var.",
+        "NSPhotoLibraryUsageDescription": "Şikayetinize fotoğraf eklemek için galerinize erişmemiz gerekiyor.",
+        "NSCameraUsageDescription": "Şikayetinize fotoğraf çekip eklemek için kameraya erişmemiz gerekiyor."
       }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#12235c"
       },
       "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
     },
@@ -28,7 +35,14 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Şikayet konumunuzu belirlemek için konumunuza ihtiyacımız var."
+          "locationWhenInUsePermission": "Şikayet konumunuzu ve en yakın nöbetçi eczaneyi belirlemek için konumunuza ihtiyacımız var."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Şikayetinize fotoğraf eklemek için galerinize erişmemiz gerekiyor.",
+          "cameraPermission": "Şikayetinize fotoğraf çekip eklemek için kameraya erişmemiz gerekiyor."
         }
       ]
     ]

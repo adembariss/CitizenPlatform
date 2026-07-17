@@ -1,270 +1,113 @@
-import { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { createComplaint, getMunicipalityCategories, resolveMunicipality, type PublicCategory } from '../services/api';
-import { ExpoLocationProvider } from '../services/location/ExpoLocationProvider';
+import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { GradientHeader } from '../components/Header';
+import { Card } from '../components/ui';
+import { useAuth } from '../context/AuthContext';
+import { getPublicStats, type PublicStats } from '../services/api';
+import { colors, gradients, radius, shadow, type } from '../theme';
 
-const locationProvider = new ExpoLocationProvider();
+type Nav = { navigate: (screen: string) => void };
 
-type LocationState =
-  | { status: 'idle' }
-  | { status: 'locating' }
-  | { status: 'resolved'; latitude: number; longitude: number; municipalityName: string; municipalityId: string }
-  | { status: 'error'; message: string };
+const QUICK = [
+  { key: 'Bildir', label: 'Şikayet Bildir', icon: 'megaphone', tint: colors.blue, desc: 'Sorunu belediyene ilet' },
+  { key: 'Eczaneler', label: 'Nöbetçi Eczane', icon: 'medkit', tint: colors.green, desc: 'En yakın açık eczane' },
+  { key: 'Takip', label: 'Takip Et', icon: 'search', tint: colors.cyan, desc: 'Kodla durum sorgula' },
+  { key: 'Hesap', label: 'Şikayetlerim', icon: 'albums', tint: colors.amber, desc: 'Geçmiş başvuruların' }
+] as const;
 
-type SubmitState = { status: 'idle' } | { status: 'submitting' } | { status: 'success'; trackingCode: string } | { status: 'error'; message: string };
+export function HomeScreen({ navigation }: { navigation: Nav }) {
+  const { isAuthenticated, user } = useAuth();
+  const [stats, setStats] = useState<PublicStats | null>(null);
 
-export function HomeScreen() {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [location, setLocation] = useState<LocationState>({ status: 'idle' });
-  const [categories, setCategories] = useState<PublicCategory[]>([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [submit, setSubmit] = useState<SubmitState>({ status: 'idle' });
+  useEffect(() => {
+    getPublicStats().then((r) => r.data && setStats(r.data));
+  }, []);
 
-  async function handleUseLocation() {
-    setLocation({ status: 'locating' });
-    try {
-      const coordinates = await locationProvider.getCurrentPosition();
-      const resolved = await resolveMunicipality(coordinates.latitude, coordinates.longitude);
-
-      if (!resolved.data?.isSuccess || !resolved.data.municipalityName || !resolved.data.municipalityId) {
-        setLocation({
-          status: 'error',
-          message: resolved.data?.failureReason ?? 'Bu konum için hizmet veren bir belediye bulunamadı.'
-        });
-        return;
-      }
-
-      setLocation({
-        status: 'resolved',
-        latitude: coordinates.latitude,
-        longitude: coordinates.longitude,
-        municipalityName: resolved.data.municipalityName,
-        municipalityId: resolved.data.municipalityId
-      });
-
-      const categoryResult = await getMunicipalityCategories(resolved.data.municipalityId);
-      const loadedCategories = categoryResult.data ?? [];
-      setCategories(loadedCategories);
-      setSelectedCategoryId((current) =>
-        current && loadedCategories.some((category) => category.id === current) ? current : null
-      );
-    } catch (error) {
-      setLocation({ status: 'error', message: error instanceof Error ? error.message : 'Konum alınamadı.' });
-    }
-  }
-
-  async function handleSubmit() {
-    if (location.status !== 'resolved') {
-      setSubmit({ status: 'error', message: 'Önce konumunuzu paylaşmalısınız.' });
-      return;
-    }
-
-    if (!selectedCategoryId) {
-      setSubmit({ status: 'error', message: 'Lütfen bir kategori seçin.' });
-      return;
-    }
-
-    if (!description.trim()) {
-      setSubmit({ status: 'error', message: 'Açıklama zorunludur.' });
-      return;
-    }
-
-    setSubmit({ status: 'submitting' });
-
-    const result = await createComplaint({
-      categoryId: selectedCategoryId,
-      title: title || undefined,
-      description,
-      latitude: location.latitude,
-      longitude: location.longitude,
-      isAnonymous: true,
-      source: 'CitizenMobile'
-    });
-
-    if (!result.success || !result.data) {
-      setSubmit({ status: 'error', message: result.message ?? 'Bildirim gönderilemedi.' });
-      return;
-    }
-
-    setSubmit({ status: 'success', trackingCode: result.data.trackingCode });
-  }
-
-  if (submit.status === 'success') {
-    return (
-      <View style={styles.screen}>
-        <View style={styles.header}>
-          <Text style={styles.eyebrow}>Bildirim alındı</Text>
-          <Text style={styles.title}>Teşekkürler, talebiniz kaydedildi.</Text>
-        </View>
-        <View style={styles.trackingBox}>
-          <Text style={styles.locationText}>Takip kodunuz</Text>
-          <Text style={styles.trackingCode}>{submit.trackingCode}</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => {
-            setTitle('');
-            setDescription('');
-            setLocation({ status: 'idle' });
-            setSubmit({ status: 'idle' });
-          }}
-        >
-          <Text style={styles.buttonText}>Yeni bildirim oluştur</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  const statTiles = [
+    { label: 'Toplam Başvuru', value: stats?.totalComplaints, icon: 'documents' as const },
+    { label: 'Çözülen', value: stats?.resolvedComplaints, icon: 'checkmark-done' as const },
+    { label: 'Belediye', value: stats?.activeMunicipalities, icon: 'business' as const },
+    { label: 'Kategori', value: stats?.categories, icon: 'pricetags' as const }
+  ];
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>Vatandaş mobil</Text>
-        <Text style={styles.title}>Bildirim oluştur</Text>
-      </View>
-      <View style={styles.form}>
-        <TextInput placeholder="Başlık" style={styles.input} value={title} onChangeText={setTitle} />
-        <TextInput
-          placeholder="Açıklama"
-          multiline
-          numberOfLines={5}
-          style={[styles.input, styles.textArea]}
-          value={description}
-          onChangeText={setDescription}
-        />
-        <TouchableOpacity style={styles.locationBox} onPress={handleUseLocation} disabled={location.status === 'locating'}>
-          {location.status === 'locating' && <ActivityIndicator />}
-          {location.status === 'resolved' && <Text style={styles.locationText}>Konum alındı — {location.municipalityName}</Text>}
-          {(location.status === 'idle' || location.status === 'error') && <Text style={styles.locationText}>Konumumu kullan</Text>}
-        </TouchableOpacity>
-        {location.status === 'error' && <Text style={styles.errorText}>{location.message}</Text>}
-        {location.status === 'resolved' && categories.length > 0 && (
-          <View style={styles.categorySection}>
-            <Text style={styles.locationText}>Kategori seçin</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryList}>
-              {categories.map((category) => (
-                <TouchableOpacity
-                  key={category.id}
-                  style={[styles.categoryChip, selectedCategoryId === category.id && styles.categoryChipSelected]}
-                  onPress={() => setSelectedCategoryId(category.id)}
-                >
-                  <Text
-                    style={[styles.categoryChipText, selectedCategoryId === category.id && styles.categoryChipTextSelected]}
-                  >
-                    {category.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <GradientHeader
+        title="Belediyem"
+        subtitle={isAuthenticated && user ? `Merhaba, ${user.fullName.split(' ')[0]} 👋` : 'Şehrini birlikte iyileştirelim'}
+      />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Pressable onPress={() => navigation.navigate('Bildir')}>
+          <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.hero, shadow(14)]}>
+            <View style={styles.heroBubble} />
+            <View style={styles.heroBubble2} />
+            <Text style={styles.heroEyebrow}>VATANDAŞ HİZMETİ</Text>
+            <Text style={styles.heroTitle}>Mahallendeki sorunu{'\n'}30 saniyede bildir.</Text>
+            <View style={styles.heroCta}>
+              <Text style={styles.heroCtaText}>Hemen bildir</Text>
+              <Ionicons name="arrow-forward" size={18} color={colors.navy} />
+            </View>
+          </LinearGradient>
+        </Pressable>
+
+        <View style={styles.statGrid}>
+          {statTiles.map((tile) => (
+            <View key={tile.label} style={[styles.statTile, shadow(6)]}>
+              <Ionicons name={tile.icon} size={18} color={colors.blue} />
+              <Text style={styles.statValue}>{tile.value ?? '—'}</Text>
+              <Text style={styles.statLabel}>{tile.label}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Text style={[type.h3, { marginTop: 4 }]}>Neye ihtiyacın var?</Text>
+        <View style={styles.quickGrid}>
+          {QUICK.map((item) => (
+            <Pressable key={item.key} style={{ width: '48%' }} onPress={() => navigation.navigate(item.key)}>
+              <Card style={styles.quickCard}>
+                <View style={[styles.quickIcon, { backgroundColor: `${item.tint}1a` }]}>
+                  <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={22} color={item.tint} />
+                </View>
+                <Text style={styles.quickLabel}>{item.label}</Text>
+                <Text style={type.small}>{item.desc}</Text>
+              </Card>
+            </Pressable>
+          ))}
+        </View>
+
+        <Card style={styles.infoCard}>
+          <Ionicons name="shield-checkmark" size={22} color={colors.green} />
+          <View style={{ flex: 1 }}>
+            <Text style={type.h3}>Konumundan doğru belediyeye</Text>
+            <Text style={[type.small, { marginTop: 2 }]}>
+              Bildirimin, seçtiğin konuma göre yetkili belediyeye otomatik iletilir. İstersen anonim de gönderebilirsin.
+            </Text>
           </View>
-        )}
-        {submit.status === 'error' && <Text style={styles.errorText}>{submit.message}</Text>}
-        <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={submit.status === 'submitting'}>
-          {submit.status === 'submitting' ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.buttonText}>Gönder</Text>}
-        </TouchableOpacity>
-      </View>
+        </Card>
+        <View style={{ height: 12 }} />
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    padding: 20,
-    gap: 20
-  },
-  header: {
-    gap: 8
-  },
-  eyebrow: {
-    color: '#52635e',
-    fontSize: 14
-  },
-  title: {
-    color: '#1f2933',
-    fontSize: 30,
-    fontWeight: '700'
-  },
-  form: {
-    gap: 14
-  },
-  input: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: '#c8d5d0',
-    borderRadius: 8,
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 14,
-    paddingVertical: 10
-  },
-  textArea: {
-    minHeight: 120,
-    textAlignVertical: 'top'
-  },
-  locationBox: {
-    minHeight: 160,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#7d918a',
-    borderStyle: 'dashed',
-    borderRadius: 8
-  },
-  locationText: {
-    color: '#40524c'
-  },
-  errorText: {
-    color: '#b3261e',
-    fontWeight: '600'
-  },
-  categorySection: {
-    gap: 8
-  },
-  categoryList: {
-    gap: 8,
-    paddingVertical: 2
-  },
-  categoryChip: {
-    borderWidth: 1,
-    borderColor: '#c8d5d0',
-    borderRadius: 999,
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 14,
-    paddingVertical: 8
-  },
-  categoryChipSelected: {
-    borderColor: '#1f6f55',
-    backgroundColor: '#1f6f55'
-  },
-  categoryChipText: {
-    color: '#40524c'
-  },
-  categoryChipTextSelected: {
-    color: '#ffffff',
-    fontWeight: '700'
-  },
-  trackingBox: {
-    alignItems: 'center',
-    gap: 8,
-    padding: 20,
-    borderRadius: 8,
-    backgroundColor: '#eef5f2'
-  },
-  trackingCode: {
-    fontSize: 24,
-    fontWeight: '700',
-    letterSpacing: 1,
-    color: '#1f2933'
-  },
-  button: {
-    alignItems: 'center',
-    borderRadius: 8,
-    backgroundColor: '#1f6f55',
-    paddingVertical: 14
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700'
-  }
+  content: { padding: 18, gap: 16 },
+  hero: { borderRadius: radius.xl, padding: 22, overflow: 'hidden' },
+  heroBubble: { position: 'absolute', right: -30, top: -30, width: 130, height: 130, borderRadius: 65, backgroundColor: 'rgba(34,184,232,0.22)' },
+  heroBubble2: { position: 'absolute', right: 40, bottom: -40, width: 90, height: 90, borderRadius: 45, backgroundColor: 'rgba(255,255,255,0.08)' },
+  heroEyebrow: { color: '#8fc4f0', fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },
+  heroTitle: { color: '#fff', fontSize: 23, fontWeight: '800', marginTop: 8, lineHeight: 30 },
+  heroCta: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.cyan, alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 11, borderRadius: radius.pill, marginTop: 18 },
+  heroCtaText: { color: colors.navy, fontWeight: '800', fontSize: 14 },
+  statGrid: { flexDirection: 'row', gap: 10 },
+  statTile: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, paddingVertical: 14, paddingHorizontal: 8, alignItems: 'center', gap: 3, borderWidth: 1, borderColor: colors.line },
+  statValue: { fontSize: 19, fontWeight: '800', color: colors.ink },
+  statLabel: { fontSize: 10.5, fontWeight: '600', color: colors.muted, textAlign: 'center' },
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
+  quickCard: { padding: 16, gap: 6, minHeight: 118 },
+  quickIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  quickLabel: { fontSize: 15, fontWeight: '800', color: colors.ink },
+  infoCard: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: '#f0f9f3', borderColor: '#d5efdd' }
 });
