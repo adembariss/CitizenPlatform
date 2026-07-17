@@ -21,4 +21,7 @@ public sealed record CreateComplaintCommand(
     Guid? RegisteredCitizenId = null,
     // Set when the citizen picked the municipality directly (address selector):
     // routing uses this id instead of resolving by coordinate (ST_Contains).
-    Guid? MunicipalityId = null);
+    Guid? MunicipalityId = null,
+    // Set when the complaint targets a distribution institution (electricity/water/gas)
+    // instead of the municipality. MunicipalityId still records the citizen's location.
+    Guid? InstitutionId = null);

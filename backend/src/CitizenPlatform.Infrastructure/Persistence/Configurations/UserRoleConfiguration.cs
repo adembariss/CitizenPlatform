@@ -22,6 +22,9 @@ internal sealed class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
         builder.Property(entity => entity.MunicipalityId)
             .HasColumnName("municipality_id");
 
+        builder.Property(entity => entity.InstitutionId)
+            .HasColumnName("institution_id");
+
         builder.Property(entity => entity.AssignedAt)
             .HasColumnName("assigned_at")
             .HasColumnType("timestamp with time zone")

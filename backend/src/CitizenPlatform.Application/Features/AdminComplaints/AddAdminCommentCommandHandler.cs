@@ -46,7 +46,7 @@ public sealed class AddAdminCommentCommandHandler
         }
 
         var complaint = await _complaintRepository.GetByIdAsync(command.ComplaintId, cancellationToken);
-        if (complaint is null || !scope.CanAccess(complaint.MunicipalityId))
+        if (complaint is null || !scope.CanAccessComplaint(complaint.MunicipalityId, complaint.InstitutionId))
         {
             return AdminScopedResult<AdminComplaintCommentDto>.AsNotFound();
         }

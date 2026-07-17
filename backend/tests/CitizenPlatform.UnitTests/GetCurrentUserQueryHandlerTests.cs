@@ -20,7 +20,8 @@ public sealed class GetCurrentUserQueryHandlerTests
         };
         var handler = new GetCurrentUserQueryHandler(
             new FakeUserRepository(user, roleAssignments),
-            new FakeMunicipalityRepository());
+            new FakeMunicipalityRepository(),
+            new FakeInstitutionRepository());
 
         var result = await handler.HandleAsync(user.Id, CancellationToken.None);
 
@@ -38,7 +39,8 @@ public sealed class GetCurrentUserQueryHandlerTests
     {
         var handler = new GetCurrentUserQueryHandler(
             new FakeUserRepository(null, []),
-            new FakeMunicipalityRepository());
+            new FakeMunicipalityRepository(),
+            new FakeInstitutionRepository());
 
         var result = await handler.HandleAsync(Guid.NewGuid(), CancellationToken.None);
 
@@ -55,7 +57,8 @@ public sealed class GetCurrentUserQueryHandlerTests
         };
         var handler = new GetCurrentUserQueryHandler(
             new FakeUserRepository(user, roleAssignments),
-            new FakeMunicipalityRepository());
+            new FakeMunicipalityRepository(),
+            new FakeInstitutionRepository());
 
         var result = await handler.HandleAsync(user.Id, CancellationToken.None);
 
@@ -94,6 +97,15 @@ public sealed class GetCurrentUserQueryHandlerTests
         {
             return Task.FromResult(_roleAssignments);
         }
+    }
+
+    private sealed class FakeInstitutionRepository : IInstitutionRepository
+    {
+        public Task<Institution?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+            => Task.FromResult<Institution?>(null);
+
+        public Task<IReadOnlyList<Institution>> ListByAreaAsync(string province, string? district, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<Institution>>(System.Array.Empty<Institution>());
     }
 
     private sealed class FakeMunicipalityRepository : IMunicipalityRepository

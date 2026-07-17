@@ -93,6 +93,9 @@ public sealed class DevelopmentDataSeeder
                 cancellationToken);
         }
 
+        // Türkiye geneli dağıtım kurumları (elektrik/su/doğalgaz) + hizmet bölgeleri + hesaplar.
+        await SeedInstitutionsAsync(municipalityAdminRole.Id, municipalityEmployeeRole.Id, cancellationToken);
+
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -115,7 +118,8 @@ public sealed class DevelopmentDataSeeder
         UserType userType,
         Guid roleId,
         Guid? municipalityId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? institutionId = null)
     {
         var normalizedEmail = email.Trim().ToLowerInvariant();
         var user = await _dbContext.Users.FirstOrDefaultAsync(candidate => candidate.Email == normalizedEmail, cancellationToken);
@@ -133,8 +137,62 @@ public sealed class DevelopmentDataSeeder
 
         if (!hasActiveRole)
         {
-            var assignment = UserRole.Assign(user.Id, roleId, municipalityId);
+            var assignment = UserRole.Assign(user.Id, roleId, municipalityId, institutionId);
             await _dbContext.UserRoles.AddAsync(assignment, cancellationToken);
+        }
+    }
+
+    // Türkiye geneli dağıtım kurumlarını (elektrik/su/doğalgaz) hizmet bölgeleri, örnek
+    // kategoriler ve demo admin/memur hesaplarıyla seed'ler. Idempotent (koda göre get-or-create).
+    private async Task SeedInstitutionsAsync(Guid adminRoleId, Guid employeeRoleId, CancellationToken cancellationToken)
+    {
+        var existingInstitutions = await _dbContext.Institutions.ToListAsync(cancellationToken);
+        var byCode = existingInstitutions.ToDictionary(institution => institution.Code, StringComparer.Ordinal);
+        var institutionIdsWithDepartments = await _dbContext.Departments
+            .Where(department => department.InstitutionId != null)
+            .Select(department => department.InstitutionId!.Value)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var hasDepartments = institutionIdsWithDepartments.ToHashSet();
+
+        foreach (var seed in InstitutionSeedData.Institutions)
+        {
+            var code = seed.Code.ToUpperInvariant();
+            if (!byCode.TryGetValue(code, out var institution))
+            {
+                institution = Institution.Create(seed.Name, code, seed.Type, seed.CenterProvince);
+                foreach (var province in seed.Provinces)
+                {
+                    institution.AddServiceArea(province);
+                }
+
+                await _dbContext.Institutions.AddAsync(institution, cancellationToken);
+
+                foreach (var (name, categoryCode) in InstitutionSeedData.Categories[seed.Type])
+                {
+                    var category = ComplaintCategory.Create(name, $"{categoryCode}_{code}", municipalityId: null, institutionId: institution.Id);
+                    await _dbContext.ComplaintCategories.AddAsync(category, cancellationToken);
+                }
+
+                var codeSlug = code.ToLowerInvariant().Replace('_', '-');
+                await GetOrCreateUserAsync(
+                    $"admin@{codeSlug}.kurum.tr", $"{seed.Name} Yöneticisi",
+                    UserType.MunicipalityAdmin, adminRoleId, null, cancellationToken, institution.Id);
+                await GetOrCreateUserAsync(
+                    $"memur@{codeSlug}.kurum.tr", $"{seed.Name} Çalışanı",
+                    UserType.MunicipalityEmployee, employeeRoleId, null, cancellationToken, institution.Id);
+            }
+
+            // Kuruma özel birimler (belediye birimlerinden ayrı yapı). Daha önce oluşturulmuş
+            // kurumlara da eklenir; bu yüzden kurum oluşturmadan ayrı kontrol edilir.
+            if (!hasDepartments.Contains(institution.Id))
+            {
+                foreach (var (name, departmentCode) in InstitutionSeedData.Departments[seed.Type])
+                {
+                    var department = Department.CreateForInstitution(institution.Id, name, departmentCode);
+                    await _dbContext.Departments.AddAsync(department, cancellationToken);
+                }
+            }
         }
     }
 }

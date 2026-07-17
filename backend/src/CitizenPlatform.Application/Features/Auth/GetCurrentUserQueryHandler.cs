@@ -8,11 +8,16 @@ public sealed class GetCurrentUserQueryHandler
 {
     private readonly IUserRepository _userRepository;
     private readonly IMunicipalityRepository _municipalityRepository;
+    private readonly IInstitutionRepository _institutionRepository;
 
-    public GetCurrentUserQueryHandler(IUserRepository userRepository, IMunicipalityRepository municipalityRepository)
+    public GetCurrentUserQueryHandler(
+        IUserRepository userRepository,
+        IMunicipalityRepository municipalityRepository,
+        IInstitutionRepository institutionRepository)
     {
         _userRepository = userRepository;
         _municipalityRepository = municipalityRepository;
+        _institutionRepository = institutionRepository;
     }
 
     public async Task<Result<CurrentUserDto>> HandleAsync(Guid userId, CancellationToken cancellationToken)
@@ -27,6 +32,7 @@ public sealed class GetCurrentUserQueryHandler
             user,
             _userRepository,
             _municipalityRepository,
+            _institutionRepository,
             cancellationToken);
 
         return Result<CurrentUserDto>.Success(currentUser);

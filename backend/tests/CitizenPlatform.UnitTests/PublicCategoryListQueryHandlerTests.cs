@@ -98,6 +98,14 @@ public sealed class PublicCategoryListQueryHandlerTests
                 && (category.MunicipalityId is null || category.MunicipalityId == municipalityId)));
         }
 
+        public Task<ComplaintCategory?> GetActiveForInstitutionAsync(Guid categoryId, Guid institutionId, CancellationToken cancellationToken)
+            => Task.FromResult(_categories.FirstOrDefault(category =>
+                category.Id == categoryId && category.IsActive && category.InstitutionId == institutionId));
+
+        public Task<IReadOnlyList<ComplaintCategory>> ListForInstitutionAsync(Guid institutionId, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<ComplaintCategory>>(
+                _categories.Where(category => category.InstitutionId == institutionId).ToList());
+
         public Task<ComplaintCategory?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         {
             return Task.FromResult(_categories.FirstOrDefault(category => category.Id == id));

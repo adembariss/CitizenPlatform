@@ -20,6 +20,7 @@ public sealed class CreateComplaintCommandHandler
     private readonly IValidator<CreateComplaintCommand> _validator;
     private readonly IGeoMunicipalityResolver _geoMunicipalityResolver;
     private readonly IMunicipalityRepository _municipalityRepository;
+    private readonly IInstitutionRepository _institutionRepository;
     private readonly IComplaintCategoryRepository _categoryRepository;
     private readonly IDepartmentRepository _departmentRepository;
     private readonly ICategoryDepartmentRuleRepository _categoryDepartmentRuleRepository;
@@ -35,6 +36,7 @@ public sealed class CreateComplaintCommandHandler
         IValidator<CreateComplaintCommand> validator,
         IGeoMunicipalityResolver geoMunicipalityResolver,
         IMunicipalityRepository municipalityRepository,
+        IInstitutionRepository institutionRepository,
         IComplaintCategoryRepository categoryRepository,
         IDepartmentRepository departmentRepository,
         ICategoryDepartmentRuleRepository categoryDepartmentRuleRepository,
@@ -49,6 +51,7 @@ public sealed class CreateComplaintCommandHandler
         _validator = validator;
         _geoMunicipalityResolver = geoMunicipalityResolver;
         _municipalityRepository = municipalityRepository;
+        _institutionRepository = institutionRepository;
         _categoryRepository = categoryRepository;
         _departmentRepository = departmentRepository;
         _categoryDepartmentRuleRepository = categoryDepartmentRuleRepository;
@@ -100,18 +103,36 @@ public sealed class CreateComplaintCommandHandler
         }
 
         var municipalityId = municipalityResult.MunicipalityId.Value;
-        var category = await _categoryRepository.GetActiveForMunicipalityAsync(
-            command.CategoryId,
-            municipalityId,
-            cancellationToken);
 
-        if (category is null)
+        // Şikayet bir dağıtım kurumuna (elektrik/su/doğalgaz) yönlendiriliyorsa kategori o kuruma ait
+        // olmalı; belediye konumu (municipalityId) yine kayıt için tutulur.
+        Institution? institution = null;
+        ComplaintCategory? category;
+        if (command.InstitutionId is Guid targetInstitutionId)
         {
-            return Result<CreateComplaintResponseDto>.Failure("Complaint category is not active or not available for the municipality.");
+            institution = await _institutionRepository.GetByIdAsync(targetInstitutionId, cancellationToken);
+            if (institution is null || !institution.IsActive)
+            {
+                return Result<CreateComplaintResponseDto>.Failure("Seçilen kurum bulunamadı.");
+            }
+
+            category = await _categoryRepository.GetActiveForInstitutionAsync(command.CategoryId, targetInstitutionId, cancellationToken);
+            if (category is null)
+            {
+                return Result<CreateComplaintResponseDto>.Failure("Seçilen kategori bu kurum için geçerli değil.");
+            }
+        }
+        else
+        {
+            category = await _categoryRepository.GetActiveForMunicipalityAsync(command.CategoryId, municipalityId, cancellationToken);
+            if (category is null)
+            {
+                return Result<CreateComplaintResponseDto>.Failure("Complaint category is not active or not available for the municipality.");
+            }
         }
 
         return await _unitOfWork.ExecuteInTransactionAsync(
-            async ct => await CreateComplaintAsync(command, municipalityResult, category, ct),
+            async ct => await CreateComplaintAsync(command, municipalityResult, category, institution, ct),
             cancellationToken);
     }
 
@@ -119,6 +140,7 @@ public sealed class CreateComplaintCommandHandler
         CreateComplaintCommand command,
         MunicipalityResolveResult municipalityResult,
         ComplaintCategory category,
+        Institution? institution,
         CancellationToken cancellationToken)
     {
         var municipalityId = municipalityResult.MunicipalityId!.Value;
@@ -164,7 +186,11 @@ public sealed class CreateComplaintCommandHandler
             addressText: command.AddressText,
             createdAt: createdAt);
 
-        if (rule is not null)
+        if (institution is not null)
+        {
+            complaint.SetTargetInstitution(institution.Id);
+        }
+        else if (rule is not null)
         {
             complaint.RouteToDepartment(rule.DepartmentId);
             department = await _departmentRepository.GetByIdAsync(rule.DepartmentId, cancellationToken);
@@ -185,14 +211,20 @@ public sealed class CreateComplaintCommandHandler
         }
 
         await _complaintRepository.AddAsync(complaint, cancellationToken);
-        await _integrationOutboxRepository.AddAsync(
-            BuildComplaintCreatedOutboxMessage(complaint, category, department, citizen),
-            cancellationToken);
+
+        // Belediye şikayetleri belediyenin dış sistemine (outbox → worker) senkronlanır.
+        // Kurum şikayetlerinin böyle bir dış hedefi yoktur; outbox atlanır.
+        if (institution is null)
+        {
+            await _integrationOutboxRepository.AddAsync(
+                BuildComplaintCreatedOutboxMessage(complaint, category, department, citizen),
+                cancellationToken);
+        }
 
         var response = new CreateComplaintResponseDto(
             complaint.Id,
             complaint.TrackingCode,
-            municipalityResult.MunicipalityName ?? string.Empty,
+            institution?.Name ?? municipalityResult.MunicipalityName ?? string.Empty,
             complaint.Status,
             complaint.CreatedAt);
 

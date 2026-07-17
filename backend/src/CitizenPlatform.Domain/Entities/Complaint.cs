@@ -55,6 +55,10 @@ public sealed class Complaint : AuditableEntity
 
     public Guid MunicipalityId { get; private set; }
 
+    // Belediye dışı hedef kurum (elektrik/su/doğalgaz). Doluysa şikayet o kuruma yönlenir;
+    // MunicipalityId yine vatandaşın konum belediyesi olarak tutulur.
+    public Guid? InstitutionId { get; private set; }
+
     public Guid CategoryId { get; private set; }
 
     public Guid? CitizenId { get; private set; }
@@ -258,6 +262,13 @@ public sealed class Complaint : AuditableEntity
         Touch();
 
         return attachment;
+    }
+
+    /// <summary>Şikayeti belediye yerine bir dağıtım kurumuna (elektrik/su/doğalgaz) yönlendirir.</summary>
+    public void SetTargetInstitution(Guid institutionId)
+    {
+        InstitutionId = Guard.AgainstEmpty(institutionId, nameof(institutionId));
+        Touch();
     }
 
     public void MarkMunicipalitySyncAttempted()

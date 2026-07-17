@@ -15,6 +15,9 @@ internal sealed class ComplaintConfiguration : IEntityTypeConfiguration<Complain
             .HasColumnName("municipality_id")
             .IsRequired();
 
+        builder.Property(entity => entity.InstitutionId)
+            .HasColumnName("institution_id");
+
         builder.Property(entity => entity.CategoryId)
             .HasColumnName("category_id")
             .IsRequired();
@@ -133,6 +136,7 @@ internal sealed class ComplaintConfiguration : IEntityTypeConfiguration<Complain
 
         builder.HasIndex(entity => new { entity.MunicipalityId, entity.Status });
         builder.HasIndex(entity => new { entity.MunicipalityId, entity.CategoryId });
+        builder.HasIndex(entity => new { entity.InstitutionId, entity.Status });
         builder.HasIndex(entity => entity.CitizenId)
             .HasFilter("citizen_id IS NOT NULL");
 

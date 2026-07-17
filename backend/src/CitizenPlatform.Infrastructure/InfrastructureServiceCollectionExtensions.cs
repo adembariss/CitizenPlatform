@@ -2,6 +2,7 @@ using CitizenPlatform.Application.Abstractions;
 using CitizenPlatform.Infrastructure.Geospatial;
 using CitizenPlatform.Infrastructure.Identity;
 using CitizenPlatform.Infrastructure.Notifications;
+using CitizenPlatform.Infrastructure.Pharmacies;
 using CitizenPlatform.Infrastructure.Persistence;
 using CitizenPlatform.Infrastructure.Persistence.Repositories;
 using CitizenPlatform.Infrastructure.Seeding;
@@ -66,6 +67,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IPublicInsightsRepository, PublicInsightsRepository>();
         services.AddScoped<ICitizenComplaintRepository, CitizenComplaintRepository>();
         services.AddScoped<IPharmacyRepository, PharmacyRepository>();
+        services.AddScoped<IInstitutionRepository, InstitutionRepository>();
+        RegisterPharmacyProvider(services, configuration);
         services.AddScoped<IAdminDashboardRepository, AdminDashboardRepository>();
         services.AddScoped<DevelopmentDataSeeder>();
 
@@ -85,6 +88,28 @@ public static class InfrastructureServiceCollectionExtensions
         {
             // Varsayılan / geliştirme: SMS'i loglar ve kodu ifşa eder (demo UI için).
             services.AddScoped<ISmsSender, LoggingSmsSender>();
+        }
+    }
+
+    private static void RegisterPharmacyProvider(IServiceCollection services, IConfiguration configuration)
+    {
+        var options = configuration.GetSection(PharmacyProviderOptions.SectionName).Get<PharmacyProviderOptions>()
+                      ?? new PharmacyProviderOptions();
+
+        if (string.Equals(options.Provider, "NosyApi", StringComparison.OrdinalIgnoreCase) && options.NosyApi.IsConfigured)
+        {
+            var nosy = options.NosyApi;
+            services.AddHttpClient<ILiveOnDutyPharmacySource, NosyApiOnDutyPharmacySource>(client =>
+            {
+                client.BaseAddress = new Uri(nosy.ApiBaseUrl.TrimEnd('/') + "/");
+                client.DefaultRequestHeaders.Add("X-NSYP", nosy.ApiKey);
+                client.Timeout = TimeSpan.FromSeconds(12);
+            });
+        }
+        else
+        {
+            // Varsayılan: canlı kaynak kapalı; nöbetçi eczane sorguları DB örnek verisine düşer.
+            services.AddSingleton<ILiveOnDutyPharmacySource, DisabledOnDutyPharmacySource>();
         }
     }
 }

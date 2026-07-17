@@ -35,7 +35,8 @@ public sealed class AdminComplaintListQueryHandler
             query.Search,
             page,
             pageSize,
-            query.Province);
+            query.Province,
+            scope.InstitutionId);
 
         var rows = await _repository.SearchAsync(criteria, cancellationToken);
 

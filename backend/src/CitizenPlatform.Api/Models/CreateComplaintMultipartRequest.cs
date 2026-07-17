@@ -25,4 +25,8 @@ public sealed class CreateComplaintMultipartRequest
     public bool IsAnonymous { get; init; }
 
     public ComplaintSource Source { get; init; }
+
+    public Guid? MunicipalityId { get; init; }
+
+    public Guid? InstitutionId { get; init; }
 }

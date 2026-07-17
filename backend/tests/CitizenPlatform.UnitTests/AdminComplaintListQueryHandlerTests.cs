@@ -115,6 +115,7 @@ public sealed class AdminComplaintListQueryHandlerTests
         public bool IsAuthenticated => true;
 
         public Guid? MunicipalityId { get; }
+        public Guid? InstitutionId { get; }
 
         public UserType? UserType { get; }
 

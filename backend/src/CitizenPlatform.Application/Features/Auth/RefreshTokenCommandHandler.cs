@@ -11,17 +11,20 @@ public sealed class RefreshTokenCommandHandler
     private readonly IRefreshTokenService _refreshTokenService;
     private readonly IUserRepository _userRepository;
     private readonly IMunicipalityRepository _municipalityRepository;
+    private readonly IInstitutionRepository _institutionRepository;
     private readonly ITokenService _tokenService;
 
     public RefreshTokenCommandHandler(
         IRefreshTokenService refreshTokenService,
         IUserRepository userRepository,
         IMunicipalityRepository municipalityRepository,
+        IInstitutionRepository institutionRepository,
         ITokenService tokenService)
     {
         _refreshTokenService = refreshTokenService;
         _userRepository = userRepository;
         _municipalityRepository = municipalityRepository;
+        _institutionRepository = institutionRepository;
         _tokenService = tokenService;
     }
 
@@ -50,6 +53,7 @@ public sealed class RefreshTokenCommandHandler
             user,
             _userRepository,
             _municipalityRepository,
+            _institutionRepository,
             cancellationToken);
 
         var token = _tokenService.CreateAccessToken(new AccessTokenRequest(
@@ -58,7 +62,8 @@ public sealed class RefreshTokenCommandHandler
             user.DisplayName,
             user.UserType,
             currentUser.MunicipalityId,
-            currentUser.Roles));
+            currentUser.Roles,
+            currentUser.InstitutionId));
 
         return Result<LoginResponseDto>.Success(new LoginResponseDto(
             token.AccessToken,

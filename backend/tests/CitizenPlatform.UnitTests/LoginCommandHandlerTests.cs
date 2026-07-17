@@ -73,6 +73,7 @@ public sealed class LoginCommandHandlerTests
             new LoginCommandValidator(),
             userRepository,
             new FakeMunicipalityRepository(),
+            new FakeInstitutionRepository(),
             new FakePasswordHasher(),
             new FakeTokenService(),
             new FakeRefreshTokenService());
@@ -115,6 +116,15 @@ public sealed class LoginCommandHandlerTests
         {
             return Task.FromResult(_roleAssignments);
         }
+    }
+
+    private sealed class FakeInstitutionRepository : IInstitutionRepository
+    {
+        public Task<Institution?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+            => Task.FromResult<Institution?>(null);
+
+        public Task<IReadOnlyList<Institution>> ListByAreaAsync(string province, string? district, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<Institution>>(System.Array.Empty<Institution>());
     }
 
     private sealed class FakeMunicipalityRepository : IMunicipalityRepository

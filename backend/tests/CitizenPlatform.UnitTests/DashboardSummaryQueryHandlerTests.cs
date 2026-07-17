@@ -49,11 +49,41 @@ public sealed class DashboardSummaryQueryHandlerTests
         Assert.Equal("New", summary.ByStatus[0].Status);
     }
 
+    [Fact]
+    public async Task MapContext_WhenMunicipalityEmployee_ReturnsOnlyOwnMunicipality()
+    {
+        var repository = new FakeAdminDashboardRepository();
+        var handler = new MunicipalityMapContextQueryHandler(repository);
+        var scope = TenantScope.From(new FakeCurrentUserService(UserType.MunicipalityEmployee, OwnMunicipalityId));
+
+        var result = await handler.HandleAsync(scope, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal(OwnMunicipalityId, repository.LastMapMunicipalityIdRequested);
+        Assert.Equal("Test Belediyesi", result.MunicipalityName);
+        Assert.NotNull(result.BoundaryGeoJson);
+    }
+
+    [Fact]
+    public async Task MapContext_WhenSystemAdminHasNoMunicipality_ReturnsNull()
+    {
+        var repository = new FakeAdminDashboardRepository();
+        var handler = new MunicipalityMapContextQueryHandler(repository);
+        var scope = TenantScope.From(new FakeCurrentUserService(UserType.SystemAdmin, null));
+
+        var result = await handler.HandleAsync(scope, CancellationToken.None);
+
+        Assert.Null(result);
+        Assert.Null(repository.LastMapMunicipalityIdRequested);
+    }
+
     private sealed class FakeAdminDashboardRepository : IAdminDashboardRepository
     {
         public Guid? LastMunicipalityIdRequested { get; private set; }
 
-        public Task<DashboardSummaryRow> GetSummaryAsync(Guid? municipalityId, DateTimeOffset utcNow, CancellationToken cancellationToken)
+        public Guid? LastMapMunicipalityIdRequested { get; private set; }
+
+        public Task<DashboardSummaryRow> GetSummaryAsync(Guid? municipalityId, Guid? institutionId, DateTimeOffset utcNow, CancellationToken cancellationToken)
         {
             LastMunicipalityIdRequested = municipalityId;
 
@@ -69,6 +99,18 @@ public sealed class DashboardSummaryQueryHandlerTests
                 []);
 
             return Task.FromResult(row);
+        }
+
+        public Task<MunicipalityMapContextRow?> GetMapContextAsync(Guid municipalityId, CancellationToken cancellationToken)
+        {
+            LastMapMunicipalityIdRequested = municipalityId;
+            MunicipalityMapContextRow row = new(
+                municipalityId,
+                "Test Belediyesi",
+                40.98,
+                29.03,
+                "{\"type\":\"Polygon\",\"coordinates\":[]}");
+            return Task.FromResult<MunicipalityMapContextRow?>(row);
         }
     }
 
@@ -92,6 +134,7 @@ public sealed class DashboardSummaryQueryHandlerTests
         public bool IsAuthenticated => true;
 
         public Guid? MunicipalityId { get; }
+        public Guid? InstitutionId { get; }
 
         public UserType? UserType { get; }
 

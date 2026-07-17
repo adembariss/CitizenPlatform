@@ -8,7 +8,8 @@ public sealed record AccessTokenRequest(
     string DisplayName,
     UserType UserType,
     Guid? MunicipalityId,
-    IReadOnlyCollection<string> Roles);
+    IReadOnlyCollection<string> Roles,
+    Guid? InstitutionId = null);
 
 public sealed record AccessTokenResult(string AccessToken, DateTimeOffset ExpiresAt);
 

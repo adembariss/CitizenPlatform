@@ -11,16 +11,21 @@ namespace CitizenPlatform.Application.Common;
 /// </summary>
 public sealed class TenantScope
 {
-    private TenantScope(bool isSystemAdmin, Guid? municipalityId, bool isAuthorizedAdmin)
+    private TenantScope(bool isSystemAdmin, Guid? municipalityId, Guid? institutionId, bool isAuthorizedAdmin)
     {
         IsSystemAdmin = isSystemAdmin;
         MunicipalityId = municipalityId;
+        InstitutionId = institutionId;
         IsAuthorizedAdmin = isAuthorizedAdmin;
     }
 
     public bool IsSystemAdmin { get; }
 
     public Guid? MunicipalityId { get; }
+
+    // Belediye dışı kurum (elektrik/su/doğalgaz) yöneticisi ise dolu; şikayet sorguları
+    // bu kuruma kilitlenir.
+    public Guid? InstitutionId { get; }
 
     public bool IsAuthorizedAdmin { get; }
 
@@ -33,6 +38,7 @@ public sealed class TenantScope
         return new TenantScope(
             currentUser.IsSystemAdmin,
             currentUser.MunicipalityId,
+            currentUser.InstitutionId,
             isAdmin);
     }
 
@@ -52,5 +58,24 @@ public sealed class TenantScope
     public bool CanAccess(Guid municipalityId)
     {
         return IsSystemAdmin || MunicipalityId == municipalityId;
+    }
+
+    /// <summary>
+    /// Bir şikayete erişim yetkisi. Kurum yöneticisi yalnızca kendi kurumuna düşen şikayetlere;
+    /// belediye/SystemAdmin ise yalnızca kuruma düşmemiş (institution_id null) şikayetlere erişir.
+    /// </summary>
+    public bool CanAccessComplaint(Guid complaintMunicipalityId, Guid? complaintInstitutionId)
+    {
+        if (InstitutionId is not null)
+        {
+            return complaintInstitutionId == InstitutionId;
+        }
+
+        if (complaintInstitutionId is not null)
+        {
+            return false;
+        }
+
+        return IsSystemAdmin || MunicipalityId == complaintMunicipalityId;
     }
 }

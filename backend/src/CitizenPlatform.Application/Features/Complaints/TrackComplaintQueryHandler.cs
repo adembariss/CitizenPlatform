@@ -60,6 +60,7 @@ public sealed class TrackComplaintQueryHandler
             complaint.ClosedAt,
             complaint.Attachments.Count,
             statusHistory,
-            responses);
+            responses,
+            complaint.InstitutionId is not null);
     }
 }

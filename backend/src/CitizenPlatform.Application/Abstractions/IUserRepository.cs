@@ -2,7 +2,7 @@ using CitizenPlatform.Domain.Entities;
 
 namespace CitizenPlatform.Application.Abstractions;
 
-public sealed record UserRoleAssignment(string RoleKey, string RoleName, Guid? MunicipalityId);
+public sealed record UserRoleAssignment(string RoleKey, string RoleName, Guid? MunicipalityId, Guid? InstitutionId = null);
 
 public interface IUserRepository
 {

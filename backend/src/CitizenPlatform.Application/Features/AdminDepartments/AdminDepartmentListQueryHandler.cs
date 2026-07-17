@@ -19,10 +19,11 @@ public sealed class AdminDepartmentListQueryHandler
         CancellationToken cancellationToken)
     {
         var municipalityId = scope.ResolveListFilter(requestedMunicipalityId);
-        var departments = await _departmentRepository.ListAsync(municipalityId, cancellationToken);
+        var departments = await _departmentRepository.ListAsync(municipalityId, scope.InstitutionId, cancellationToken);
 
         return departments
-            .Select(department => new DepartmentDto(department.Id, department.MunicipalityId, department.Name, department.Code, department.IsActive))
+            .Select(department => new DepartmentDto(
+                department.Id, department.MunicipalityId, department.Name, department.Code, department.IsActive, department.InstitutionId))
             .ToArray();
     }
 }

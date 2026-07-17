@@ -44,40 +44,55 @@ public sealed class AssignComplaintCommandHandler
         CancellationToken cancellationToken)
     {
         var complaint = await _complaintRepository.GetByIdAsync(command.ComplaintId, cancellationToken);
-        if (complaint is null || !scope.CanAccess(complaint.MunicipalityId))
+        if (complaint is null || !scope.CanAccessComplaint(complaint.MunicipalityId, complaint.InstitutionId))
         {
             return AdminScopedResult<ComplaintDto>.AsNotFound();
         }
 
         var department = await _departmentRepository.GetByIdAsync(command.DepartmentId, cancellationToken);
-        if (department is null || department.MunicipalityId != complaint.MunicipalityId)
+        if (department is null || !BelongsToSameTenant(department, complaint))
         {
-            return AdminScopedResult<ComplaintDto>.Failure("Department does not belong to this municipality.");
+            return AdminScopedResult<ComplaintDto>.Failure(complaint.InstitutionId is null
+                ? "Seçilen birim bu belediyeye ait değil."
+                : "Seçilen birim bu kuruma ait değil.");
         }
 
         complaint.AssignToDepartment(command.DepartmentId, command.AssignedByUserId, command.AssignedUserId, command.Note);
 
-        var payload = new ComplaintAssignedPayload(
-            complaint.Id,
-            complaint.MunicipalityId,
-            complaint.TrackingCode,
-            department.Id,
-            department.Name,
-            command.AssignedUserId,
-            command.Note,
-            command.AssignedByUserId,
-            _dateTimeProvider.UtcNow);
+        // Belediye şikayetleri belediyenin dış sistemine senkronlanır; kurum şikayetlerinin
+        // böyle bir dış hedefi yoktur, outbox atlanır.
+        if (complaint.InstitutionId is null)
+        {
+            var payload = new ComplaintAssignedPayload(
+                complaint.Id,
+                complaint.MunicipalityId,
+                complaint.TrackingCode,
+                department.Id,
+                department.Name,
+                command.AssignedUserId,
+                command.Note,
+                command.AssignedByUserId,
+                _dateTimeProvider.UtcNow);
 
-        var outboxMessage = IntegrationOutboxMessage.Create(
-            complaint.MunicipalityId,
-            complaint.Id,
-            nameof(Complaint),
-            "ComplaintAssigned",
-            System.Text.Json.JsonSerializer.Serialize(payload, OutboxJson.Options));
+            var outboxMessage = IntegrationOutboxMessage.Create(
+                complaint.MunicipalityId,
+                complaint.Id,
+                nameof(Complaint),
+                "ComplaintAssigned",
+                System.Text.Json.JsonSerializer.Serialize(payload, OutboxJson.Options));
 
-        await _outboxRepository.AddAsync(outboxMessage, cancellationToken);
+            await _outboxRepository.AddAsync(outboxMessage, cancellationToken);
+        }
 
         return AdminScopedResult<ComplaintDto>.Success(ToDto(complaint));
+    }
+
+    // Birim, şikayetin sahibi tenant'a mı ait? Kurum şikayeti -> kurum birimi; belediye şikayeti -> belediye birimi.
+    private static bool BelongsToSameTenant(Department department, Complaint complaint)
+    {
+        return complaint.InstitutionId is not null
+            ? department.InstitutionId == complaint.InstitutionId
+            : department.InstitutionId is null && department.MunicipalityId == complaint.MunicipalityId;
     }
 
     private static ComplaintDto ToDto(Complaint complaint)

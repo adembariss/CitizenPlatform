@@ -1,4 +1,5 @@
 using CitizenPlatform.Application.Abstractions;
+using CitizenPlatform.Application.DTOs;
 using CitizenPlatform.Application.Features.Pharmacies;
 using CitizenPlatform.Domain.Entities;
 using Xunit;
@@ -12,7 +13,7 @@ public sealed class PharmacyQueryHandlerTests
     {
         var pharmacy = Pharmacy.Create("Kadıköy Eczanesi", "İstanbul", "Kadıköy", null, null, 40.99, 29.03, isOnDuty: true);
         var repository = new FakePharmacyRepository(pharmacy);
-        var handler = new NearbyPharmacyQueryHandler(repository);
+        var handler = new NearbyPharmacyQueryHandler(repository, new DisabledLiveSource());
 
         var result = await handler.HandleAsync(40.983, 29.030, onDutyOnly: true, limit: 99999, CancellationToken.None);
 
@@ -27,13 +28,25 @@ public sealed class PharmacyQueryHandlerTests
     public async Task List_UsesDefaultLimit_AndForwardsFilters()
     {
         var repository = new FakePharmacyRepository();
-        var handler = new PharmacyListQueryHandler(repository);
+        var handler = new PharmacyListQueryHandler(repository, new DisabledLiveSource());
 
         await handler.HandleAsync("İstanbul", "Beşiktaş", onDutyOnly: false, limit: null, CancellationToken.None);
 
         Assert.Equal(PharmacyListQueryHandler.DefaultLimit, repository.LastLimit);
         Assert.Equal("İstanbul", repository.LastProvince);
         Assert.Equal("Beşiktaş", repository.LastDistrict);
+    }
+
+    // Canlı kaynak kapalı: sorgular DB (fake repo) yoluna düşer.
+    private sealed class DisabledLiveSource : ILiveOnDutyPharmacySource
+    {
+        public bool IsEnabled => false;
+
+        public Task<IReadOnlyList<PharmacyDto>> GetOnDutyAsync(string? province, string? district, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<PharmacyDto>>(System.Array.Empty<PharmacyDto>());
+
+        public Task<IReadOnlyList<PharmacyDto>> GetNearbyOnDutyAsync(double latitude, double longitude, int limit, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<PharmacyDto>>(System.Array.Empty<PharmacyDto>());
     }
 
     private sealed class FakePharmacyRepository : IPharmacyRepository

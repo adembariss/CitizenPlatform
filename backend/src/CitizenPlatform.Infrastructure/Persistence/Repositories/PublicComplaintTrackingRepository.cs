@@ -28,9 +28,23 @@ public sealed class PublicComplaintTrackingRepository : IPublicComplaintTracking
             return null;
         }
 
-        var municipality = await _dbContext.Municipalities
-            .AsNoTracking()
-            .FirstOrDefaultAsync(entity => entity.Id == complaint.MunicipalityId, cancellationToken);
+        // Şikayet bir dağıtım kurumuna (elektrik/su/doğalgaz) düştüyse kurum adını göster;
+        // aksi halde konum belediyesinin adı.
+        string organizationName;
+        if (complaint.InstitutionId is Guid institutionId)
+        {
+            var institution = await _dbContext.Institutions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(entity => entity.Id == institutionId, cancellationToken);
+            organizationName = institution?.Name ?? string.Empty;
+        }
+        else
+        {
+            var municipality = await _dbContext.Municipalities
+                .AsNoTracking()
+                .FirstOrDefaultAsync(entity => entity.Id == complaint.MunicipalityId, cancellationToken);
+            organizationName = municipality?.Name ?? string.Empty;
+        }
 
         var category = await _dbContext.ComplaintCategories
             .AsNoTracking()
@@ -46,7 +60,7 @@ public sealed class PublicComplaintTrackingRepository : IPublicComplaintTracking
 
         return new PublicComplaintTrackingRow(
             complaint,
-            municipality?.Name ?? string.Empty,
+            organizationName,
             category?.Name ?? string.Empty,
             departmentName);
     }

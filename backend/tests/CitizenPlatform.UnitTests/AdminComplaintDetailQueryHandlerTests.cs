@@ -23,8 +23,9 @@ public sealed class AdminComplaintDetailQueryHandlerTests
 
         var detail = await handler.HandleAsync(complaint.Id, scope, CancellationToken.None);
 
+        // Yetki artık handler'da CanAccessComplaint ile uygulanır; repo'ya belediye filtresi geçilmez.
         Assert.Null(detail);
-        Assert.Equal(OwnMunicipalityId, repository.LastTenantMunicipalityIdRequested);
+        Assert.Null(repository.LastTenantMunicipalityIdRequested);
     }
 
     [Fact]
@@ -126,6 +127,7 @@ public sealed class AdminComplaintDetailQueryHandlerTests
         public bool IsAuthenticated => true;
 
         public Guid? MunicipalityId { get; }
+        public Guid? InstitutionId { get; }
 
         public UserType? UserType { get; }
 

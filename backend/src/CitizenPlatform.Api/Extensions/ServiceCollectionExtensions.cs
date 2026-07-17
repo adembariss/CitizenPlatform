@@ -13,6 +13,7 @@ using CitizenPlatform.Application.Features.CitizenAccounts;
 using CitizenPlatform.Application.Features.Complaints;
 using CitizenPlatform.Application.Features.PublicCategories;
 using CitizenPlatform.Application.Features.PublicInsights;
+using CitizenPlatform.Application.Features.PublicInstitutions;
 using CitizenPlatform.Application.Features.PublicDirectory;
 using CitizenPlatform.Application.Features.Pharmacies;
 using CitizenPlatform.Infrastructure;
@@ -108,6 +109,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<DistrictListQueryHandler>();
         services.AddScoped<PharmacyListQueryHandler>();
         services.AddScoped<NearbyPharmacyQueryHandler>();
+        services.AddScoped<PublicInstitutionListQueryHandler>();
+        services.AddScoped<PublicInstitutionCategoryListQueryHandler>();
         services.AddScoped<ComplaintAttachmentUploadService>();
         services.AddScoped<IValidator<CreateComplaintCommand>, CreateComplaintCommandValidator>();
         services.AddScoped<IValidator<AddComplaintAttachmentsCommand>, AddComplaintAttachmentsCommandValidator>();
@@ -136,6 +139,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<AdminComplaintListQueryHandler>();
         services.AddScoped<AdminComplaintDetailQueryHandler>();
+        services.AddScoped<AdminComplaintAttachmentQueryHandler>();
         services.AddScoped<AdminComplaintHistoryQueryHandler>();
         services.AddScoped<UpdateComplaintStatusCommandHandler>();
         services.AddScoped<AssignComplaintCommandHandler>();
@@ -145,6 +149,7 @@ public static class ServiceCollectionExtensions
     private static void RegisterAdminDashboardFeature(IServiceCollection services)
     {
         services.AddScoped<DashboardSummaryQueryHandler>();
+        services.AddScoped<MunicipalityMapContextQueryHandler>();
     }
 
     private static void RegisterAdminCategoryFeature(IServiceCollection services)

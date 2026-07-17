@@ -164,6 +164,7 @@ public sealed class AddAdminCommentCommandHandlerTests
         public bool IsAuthenticated => true;
 
         public Guid? MunicipalityId { get; }
+        public Guid? InstitutionId { get; }
 
         public UserType? UserType { get; }
 

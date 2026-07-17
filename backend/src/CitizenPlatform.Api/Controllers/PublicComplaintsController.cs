@@ -45,7 +45,8 @@ public sealed class PublicComplaintsController : ControllerBase
             request.AddressText,
             request.IsAnonymous,
             request.Source,
-            MunicipalityId: request.MunicipalityId);
+            MunicipalityId: request.MunicipalityId,
+            InstitutionId: request.InstitutionId);
 
         var result = await _createComplaintHandler.HandleAsync(command, cancellationToken);
         return ToCreateResponse(result);
@@ -69,7 +70,9 @@ public sealed class PublicComplaintsController : ControllerBase
             request.AddressText,
             request.IsAnonymous,
             request.Source,
-            MapFiles(Request.Form.Files));
+            MapFiles(Request.Form.Files),
+            MunicipalityId: request.MunicipalityId,
+            InstitutionId: request.InstitutionId);
 
         var result = await _createComplaintHandler.HandleAsync(command, cancellationToken);
         return ToCreateResponse(result);

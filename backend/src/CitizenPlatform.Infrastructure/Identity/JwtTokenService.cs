@@ -9,6 +9,7 @@ namespace CitizenPlatform.Infrastructure.Identity;
 public sealed class JwtTokenService : ITokenService
 {
     public const string MunicipalityIdClaimType = "municipality_id";
+    public const string InstitutionIdClaimType = "institution_id";
     public const string UserTypeClaimType = "user_type";
 
     private readonly JwtOptions _options;
@@ -36,6 +37,11 @@ public sealed class JwtTokenService : ITokenService
         if (request.MunicipalityId is not null)
         {
             claims.Add(new Claim(MunicipalityIdClaimType, request.MunicipalityId.Value.ToString()));
+        }
+
+        if (request.InstitutionId is not null)
+        {
+            claims.Add(new Claim(InstitutionIdClaimType, request.InstitutionId.Value.ToString()));
         }
 
         claims.AddRange(request.Roles.Select(role => new Claim(ClaimTypes.Role, role)));

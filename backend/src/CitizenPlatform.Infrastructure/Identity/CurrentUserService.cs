@@ -33,6 +33,15 @@ public sealed class CurrentUserService : ICurrentUserService
         }
     }
 
+    public Guid? InstitutionId
+    {
+        get
+        {
+            var value = Principal?.FindFirstValue(JwtTokenService.InstitutionIdClaimType);
+            return Guid.TryParse(value, out var institutionId) ? institutionId : null;
+        }
+    }
+
     public UserType? UserType
     {
         get

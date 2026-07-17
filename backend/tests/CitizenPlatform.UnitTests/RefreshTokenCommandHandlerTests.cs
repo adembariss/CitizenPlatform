@@ -71,6 +71,7 @@ public sealed class RefreshTokenCommandHandlerTests
             refreshTokenService,
             new FakeUserRepository(user),
             new FakeMunicipalityRepository(),
+            new FakeInstitutionRepository(),
             new FakeTokenService());
     }
 
@@ -142,6 +143,15 @@ public sealed class RefreshTokenCommandHandlerTests
                 [new UserRoleAssignment("MUNICIPALITY_ADMIN", "MunicipalityAdmin", MunicipalityId)];
             return Task.FromResult(assignments);
         }
+    }
+
+    private sealed class FakeInstitutionRepository : IInstitutionRepository
+    {
+        public Task<Institution?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+            => Task.FromResult<Institution?>(null);
+
+        public Task<IReadOnlyList<Institution>> ListByAreaAsync(string province, string? district, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<Institution>>(System.Array.Empty<Institution>());
     }
 
     private sealed class FakeMunicipalityRepository : IMunicipalityRepository

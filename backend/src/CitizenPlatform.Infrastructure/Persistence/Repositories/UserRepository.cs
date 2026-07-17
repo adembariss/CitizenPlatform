@@ -37,7 +37,7 @@ public sealed class UserRepository : IUserRepository
             from userRole in _dbContext.UserRoles
             join role in _dbContext.Roles on userRole.RoleId equals role.Id
             where userRole.UserId == userId && userRole.RevokedAt == null
-            select new UserRoleAssignment(role.Key, role.Name, userRole.MunicipalityId))
+            select new UserRoleAssignment(role.Key, role.Name, userRole.MunicipalityId, userRole.InstitutionId))
             .ToListAsync(cancellationToken);
     }
 }

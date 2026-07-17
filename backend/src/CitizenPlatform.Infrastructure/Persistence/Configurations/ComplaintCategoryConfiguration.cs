@@ -14,6 +14,9 @@ internal sealed class ComplaintCategoryConfiguration : IEntityTypeConfiguration<
         builder.Property(entity => entity.MunicipalityId)
             .HasColumnName("municipality_id");
 
+        builder.Property(entity => entity.InstitutionId)
+            .HasColumnName("institution_id");
+
         builder.Property(entity => entity.Name)
             .HasColumnName("name")
             .HasMaxLength(200)
@@ -32,9 +35,15 @@ internal sealed class ComplaintCategoryConfiguration : IEntityTypeConfiguration<
             .IsUnique()
             .HasFilter("municipality_id IS NOT NULL AND is_deleted = false");
 
+        // Kuruma özel kategoriler (municipality_id NULL, institution_id dolu) — kurum içinde kod tekil.
+        builder.HasIndex(entity => new { entity.InstitutionId, entity.Code })
+            .IsUnique()
+            .HasFilter("institution_id IS NOT NULL AND is_deleted = false");
+
+        // Gerçek global kategoriler (her ikisi de NULL) — kod tekil.
         builder.HasIndex(entity => entity.Code)
             .IsUnique()
-            .HasFilter("municipality_id IS NULL AND is_deleted = false");
+            .HasFilter("municipality_id IS NULL AND institution_id IS NULL AND is_deleted = false");
 
         builder.HasOne<Municipality>()
             .WithMany()

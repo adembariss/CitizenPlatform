@@ -16,3 +16,10 @@ public sealed record DashboardSummaryDto(
     IReadOnlyList<DashboardStatusCountDto> ByStatus,
     IReadOnlyList<DashboardCategoryCountDto> ByCategory,
     IReadOnlyList<DashboardDepartmentCountDto> ByDepartment);
+
+public sealed record MunicipalityMapContextDto(
+    Guid MunicipalityId,
+    string MunicipalityName,
+    double? CenterLatitude,
+    double? CenterLongitude,
+    string? BoundaryGeoJson);

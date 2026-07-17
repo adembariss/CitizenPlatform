@@ -140,6 +140,7 @@ public sealed class CreateComplaintCommandHandlerTests
                 new CreateComplaintCommandValidator(),
                 new FakeGeoMunicipalityResolver(resolveSuccess),
                 new FakeMunicipalityRepository(),
+                new FakeInstitutionRepository(),
                 new FakeComplaintCategoryRepository(categoryAvailable),
                 new FakeDepartmentRepository(),
                 new FakeCategoryDepartmentRuleRepository(),
@@ -192,6 +193,12 @@ public sealed class CreateComplaintCommandHandlerTests
             return Task.FromResult(category);
         }
 
+        public Task<ComplaintCategory?> GetActiveForInstitutionAsync(Guid categoryId, Guid institutionId, CancellationToken cancellationToken)
+            => Task.FromResult<ComplaintCategory?>(null);
+
+        public Task<IReadOnlyList<ComplaintCategory>> ListForInstitutionAsync(Guid institutionId, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<ComplaintCategory>>(System.Array.Empty<ComplaintCategory>());
+
         public Task<ComplaintCategory?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         {
             return Task.FromResult<ComplaintCategory?>(null);
@@ -235,7 +242,7 @@ public sealed class CreateComplaintCommandHandlerTests
             return Task.FromResult<Department?>(department);
         }
 
-        public Task<IReadOnlyList<Department>> ListAsync(Guid? municipalityId, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<Department>> ListAsync(Guid? municipalityId, Guid? institutionId, CancellationToken cancellationToken)
         {
             return Task.FromResult<IReadOnlyList<Department>>([]);
         }
@@ -261,6 +268,15 @@ public sealed class CreateComplaintCommandHandlerTests
 
         public Task<IReadOnlyList<DistrictRow>> GetDistrictsByProvinceAsync(string province, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyList<DistrictRow>>(Array.Empty<DistrictRow>());
+    }
+
+    private sealed class FakeInstitutionRepository : IInstitutionRepository
+    {
+        public Task<Institution?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+            => Task.FromResult<Institution?>(null);
+
+        public Task<IReadOnlyList<Institution>> ListByAreaAsync(string province, string? district, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<Institution>>(Array.Empty<Institution>());
     }
 
     private sealed class FakeCitizenRepository : ICitizenRepository

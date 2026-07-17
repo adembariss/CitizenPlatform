@@ -26,10 +26,12 @@ public sealed class PharmacyListQueryHandler
     public const int MaxLimit = 1000;
 
     private readonly IPharmacyRepository _repository;
+    private readonly ILiveOnDutyPharmacySource _liveSource;
 
-    public PharmacyListQueryHandler(IPharmacyRepository repository)
+    public PharmacyListQueryHandler(IPharmacyRepository repository, ILiveOnDutyPharmacySource liveSource)
     {
         _repository = repository;
+        _liveSource = liveSource;
     }
 
     public async Task<IReadOnlyList<PharmacyDto>> HandleAsync(
@@ -40,6 +42,14 @@ public sealed class PharmacyListQueryHandler
         CancellationToken cancellationToken)
     {
         var take = limit is null or <= 0 ? DefaultLimit : Math.Min(limit.Value, MaxLimit);
+
+        // Nöbetçi sorgusu ve canlı kaynak aktifse gerçek veriyi kullan (aksi halde DB örnek verisi).
+        if (onDutyOnly && _liveSource.IsEnabled)
+        {
+            var live = await _liveSource.GetOnDutyAsync(province, district, cancellationToken);
+            return live.Take(take).ToArray();
+        }
+
         var rows = await _repository.ListAsync(province, district, onDutyOnly, take, cancellationToken);
         return rows.Select(pharmacy => Map(pharmacy, null)).ToArray();
     }
@@ -63,10 +73,12 @@ public sealed class NearbyPharmacyQueryHandler
     public const int MaxLimit = 100;
 
     private readonly IPharmacyRepository _repository;
+    private readonly ILiveOnDutyPharmacySource _liveSource;
 
-    public NearbyPharmacyQueryHandler(IPharmacyRepository repository)
+    public NearbyPharmacyQueryHandler(IPharmacyRepository repository, ILiveOnDutyPharmacySource liveSource)
     {
         _repository = repository;
+        _liveSource = liveSource;
     }
 
     public async Task<IReadOnlyList<PharmacyDto>> HandleAsync(
@@ -77,6 +89,12 @@ public sealed class NearbyPharmacyQueryHandler
         CancellationToken cancellationToken)
     {
         var take = limit is null or <= 0 ? DefaultLimit : Math.Min(limit.Value, MaxLimit);
+
+        if (onDutyOnly && _liveSource.IsEnabled)
+        {
+            return await _liveSource.GetNearbyOnDutyAsync(latitude, longitude, take, cancellationToken);
+        }
+
         var rows = await _repository.NearbyAsync(latitude, longitude, onDutyOnly, take, cancellationToken);
 
         return rows

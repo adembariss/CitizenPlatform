@@ -16,4 +16,6 @@ public sealed record CreateComplaintRequestDto(
     ComplaintSource Source,
     // Opsiyonel: adres seçiciyle belediye doğrudan seçildiyse dolu gelir; boşsa
     // belediye koordinattan çözümlenir.
-    Guid? MunicipalityId = null);
+    Guid? MunicipalityId = null,
+    // Opsiyonel: şikayet bir dağıtım kurumuna (elektrik/su/doğalgaz) yönlendiriliyorsa kurum id'si.
+    Guid? InstitutionId = null);

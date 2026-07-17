@@ -278,6 +278,10 @@ namespace CitizenPlatform.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("external_municipality_status");
 
+                    b.Property<Guid?>("InstitutionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("institution_id");
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -360,6 +364,8 @@ namespace CitizenPlatform.Infrastructure.Persistence.Migrations
                     b.HasIndex("TrackingCode")
                         .IsUnique()
                         .HasDatabaseName("ux_complaints_tracking_code");
+
+                    b.HasIndex("InstitutionId", "Status");
 
                     b.HasIndex("MunicipalityId", "CategoryId");
 
@@ -545,6 +551,10 @@ namespace CitizenPlatform.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
+                    b.Property<Guid?>("InstitutionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("institution_id");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
@@ -573,9 +583,13 @@ namespace CitizenPlatform.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Code")
                         .IsUnique()
-                        .HasFilter("municipality_id IS NULL AND is_deleted = false");
+                        .HasFilter("municipality_id IS NULL AND institution_id IS NULL AND is_deleted = false");
 
                     b.HasIndex("IsDeleted");
+
+                    b.HasIndex("InstitutionId", "Code")
+                        .IsUnique()
+                        .HasFilter("institution_id IS NOT NULL AND is_deleted = false");
 
                     b.HasIndex("MunicipalityId", "Code")
                         .IsUnique()
@@ -722,6 +736,10 @@ namespace CitizenPlatform.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
+                    b.Property<Guid?>("InstitutionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("institution_id");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
@@ -732,7 +750,7 @@ namespace CitizenPlatform.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
-                    b.Property<Guid>("MunicipalityId")
+                    b.Property<Guid?>("MunicipalityId")
                         .HasColumnType("uuid")
                         .HasColumnName("municipality_id");
 
@@ -750,11 +768,135 @@ namespace CitizenPlatform.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("IsDeleted");
 
+                    b.HasIndex("InstitutionId", "Code")
+                        .IsUnique()
+                        .HasFilter("institution_id IS NOT NULL AND is_deleted = false");
+
                     b.HasIndex("MunicipalityId", "Code")
+                        .IsUnique()
+                        .HasFilter("municipality_id IS NOT NULL AND is_deleted = false");
+
+                    b.ToTable("departments", "public");
+                });
+
+            modelBuilder.Entity("CitizenPlatform.Domain.Entities.Institution", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<double?>("CenterLatitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("center_latitude");
+
+                    b.Property<double?>("CenterLongitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("center_longitude");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Province")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("province");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
                         .IsUnique()
                         .HasFilter("is_deleted = false");
 
-                    b.ToTable("departments", "public");
+                    b.HasIndex("IsDeleted");
+
+                    b.HasIndex("Type");
+
+                    b.ToTable("institutions", "public");
+                });
+
+            modelBuilder.Entity("CitizenPlatform.Domain.Entities.InstitutionServiceArea", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("District")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("district");
+
+                    b.Property<Guid>("InstitutionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("institution_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Province")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("province");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstitutionId");
+
+                    b.HasIndex("IsDeleted");
+
+                    b.HasIndex("Province", "District");
+
+                    b.ToTable("institution_service_areas", "public");
                 });
 
             modelBuilder.Entity("CitizenPlatform.Domain.Entities.IntegrationAttempt", b =>
@@ -1447,6 +1589,10 @@ namespace CitizenPlatform.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
+                    b.Property<Guid?>("InstitutionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("institution_id");
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -1707,7 +1853,15 @@ namespace CitizenPlatform.Infrastructure.Persistence.Migrations
                     b.HasOne("CitizenPlatform.Domain.Entities.Municipality", null)
                         .WithMany("Departments")
                         .HasForeignKey("MunicipalityId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("CitizenPlatform.Domain.Entities.InstitutionServiceArea", b =>
+                {
+                    b.HasOne("CitizenPlatform.Domain.Entities.Institution", null)
+                        .WithMany("ServiceAreas")
+                        .HasForeignKey("InstitutionId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -1804,6 +1958,11 @@ namespace CitizenPlatform.Infrastructure.Persistence.Migrations
                     b.Navigation("Comments");
 
                     b.Navigation("StatusHistories");
+                });
+
+            modelBuilder.Entity("CitizenPlatform.Domain.Entities.Institution", b =>
+                {
+                    b.Navigation("ServiceAreas");
                 });
 
             modelBuilder.Entity("CitizenPlatform.Domain.Entities.IntegrationOutboxMessage", b =>

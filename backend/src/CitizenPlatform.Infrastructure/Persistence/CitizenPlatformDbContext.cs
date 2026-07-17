@@ -28,6 +28,10 @@ public sealed class CitizenPlatformDbContext : DbContext
 
     public DbSet<Pharmacy> Pharmacies => Set<Pharmacy>();
 
+    public DbSet<Institution> Institutions => Set<Institution>();
+
+    public DbSet<InstitutionServiceArea> InstitutionServiceAreas => Set<InstitutionServiceArea>();
+
     public DbSet<Department> Departments => Set<Department>();
 
     public DbSet<ComplaintCategory> ComplaintCategories => Set<ComplaintCategory>();

@@ -13,7 +13,10 @@ public sealed record AdminComplaintSearchCriteria(
     string? Search,
     int Page,
     int PageSize,
-    string? Province = null);
+    string? Province = null,
+    // Dolu ise yalnızca bu kuruma (elektrik/su/doğalgaz) düşen şikayetler; belediye görünümünde
+    // (null) kurum şikayetleri hariç tutulur.
+    Guid? InstitutionId = null);
 
 public sealed record AdminComplaintListRow(
     Guid Id,

@@ -17,6 +17,7 @@ public sealed class AdminComplaintsController : ControllerBase
 {
     private readonly AdminComplaintListQueryHandler _listHandler;
     private readonly AdminComplaintDetailQueryHandler _detailHandler;
+    private readonly AdminComplaintAttachmentQueryHandler _attachmentHandler;
     private readonly AdminComplaintHistoryQueryHandler _historyHandler;
     private readonly UpdateComplaintStatusCommandHandler _updateStatusHandler;
     private readonly AssignComplaintCommandHandler _assignHandler;
@@ -26,6 +27,7 @@ public sealed class AdminComplaintsController : ControllerBase
     public AdminComplaintsController(
         AdminComplaintListQueryHandler listHandler,
         AdminComplaintDetailQueryHandler detailHandler,
+        AdminComplaintAttachmentQueryHandler attachmentHandler,
         AdminComplaintHistoryQueryHandler historyHandler,
         UpdateComplaintStatusCommandHandler updateStatusHandler,
         AssignComplaintCommandHandler assignHandler,
@@ -34,6 +36,7 @@ public sealed class AdminComplaintsController : ControllerBase
     {
         _listHandler = listHandler;
         _detailHandler = detailHandler;
+        _attachmentHandler = attachmentHandler;
         _historyHandler = historyHandler;
         _updateStatusHandler = updateStatusHandler;
         _assignHandler = assignHandler;
@@ -83,6 +86,35 @@ public sealed class AdminComplaintsController : ControllerBase
         }
 
         return Ok(ApiResponse<AdminComplaintHistoryDto>.Ok(history));
+    }
+
+    [HttpGet("{id:guid}/attachments/{attachmentId:guid}")]
+    public async Task<IActionResult> Attachment(
+        Guid id,
+        Guid attachmentId,
+        CancellationToken cancellationToken)
+    {
+        var attachment = await _attachmentHandler.HandleAsync(
+            id,
+            attachmentId,
+            TenantScope.From(_currentUserService),
+            cancellationToken);
+
+        if (attachment is null)
+        {
+            return NotFound(ApiResponse<object>.Fail("Attachment not found."));
+        }
+
+        Response.Headers.CacheControl = "private, no-store, max-age=0";
+        Response.Headers.ETag = $"\"{attachment.Sha256Hash}\"";
+        Response.Headers["X-Content-Type-Options"] = "nosniff";
+        Response.ContentLength = attachment.SizeInBytes;
+
+        return File(
+            attachment.Content,
+            attachment.ContentType,
+            attachment.OriginalFileName,
+            enableRangeProcessing: true);
     }
 
     [HttpPut("{id:guid}/status")]

@@ -1,5 +1,6 @@
 using CitizenPlatform.Application.Abstractions;
 using CitizenPlatform.Domain.Enums;
+using System.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace CitizenPlatform.Infrastructure.Persistence.Repositories;
@@ -24,13 +25,24 @@ public sealed class AdminDashboardRepository : IAdminDashboardRepository
 
     public async Task<DashboardSummaryRow> GetSummaryAsync(
         Guid? municipalityId,
+        Guid? institutionId,
         DateTimeOffset utcNow,
         CancellationToken cancellationToken)
     {
         var complaints = _dbContext.Complaints.AsQueryable();
-        if (municipalityId is not null)
+        if (institutionId is not null)
         {
-            complaints = complaints.Where(complaint => complaint.MunicipalityId == municipalityId);
+            // Kurum yöneticisi: yalnızca kuruma düşen şikayetler.
+            complaints = complaints.Where(complaint => complaint.InstitutionId == institutionId);
+        }
+        else
+        {
+            // Belediye/SystemAdmin: kuruma düşen şikayetler hariç.
+            complaints = complaints.Where(complaint => complaint.InstitutionId == null);
+            if (municipalityId is not null)
+            {
+                complaints = complaints.Where(complaint => complaint.MunicipalityId == municipalityId);
+            }
         }
 
         var totalComplaints = await complaints.CountAsync(cancellationToken);
@@ -97,5 +109,71 @@ public sealed class AdminDashboardRepository : IAdminDashboardRepository
             byStatus,
             byCategory,
             byDepartment);
+    }
+
+    public async Task<MunicipalityMapContextRow?> GetMapContextAsync(
+        Guid municipalityId,
+        CancellationToken cancellationToken)
+    {
+        var municipality = await _dbContext.Municipalities
+            .AsNoTracking()
+            .Where(item => item.Id == municipalityId && item.IsActive)
+            .Select(item => new
+            {
+                item.Id,
+                item.Name,
+                item.CenterLatitude,
+                item.CenterLongitude
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (municipality is null)
+        {
+            return null;
+        }
+
+        var connection = _dbContext.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+        if (shouldClose)
+        {
+            await connection.OpenAsync(cancellationToken);
+        }
+
+        string? boundaryGeoJson;
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                SELECT ST_AsGeoJSON(
+                    ST_UnaryUnion(ST_Collect(boundary_geometry)),
+                    6
+                )
+                FROM public.municipality_boundaries
+                WHERE municipality_id = @municipalityId
+                  AND is_active = TRUE
+                  AND is_deleted = FALSE;
+                """;
+            var municipalityParameter = command.CreateParameter();
+            municipalityParameter.ParameterName = "municipalityId";
+            municipalityParameter.Value = municipalityId;
+            command.Parameters.Add(municipalityParameter);
+
+            var result = await command.ExecuteScalarAsync(cancellationToken);
+            boundaryGeoJson = result is null or DBNull ? null : Convert.ToString(result);
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
+
+        return new MunicipalityMapContextRow(
+            municipality.Id,
+            municipality.Name,
+            municipality.CenterLatitude,
+            municipality.CenterLongitude,
+            boundaryGeoJson);
     }
 }

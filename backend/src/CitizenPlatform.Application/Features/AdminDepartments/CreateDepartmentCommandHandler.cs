@@ -52,6 +52,6 @@ public sealed class CreateDepartmentCommandHandler
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result<DepartmentDto>.Success(
-            new DepartmentDto(department.Id, department.MunicipalityId, department.Name, department.Code, department.IsActive));
+            new DepartmentDto(department.Id, department.MunicipalityId, department.Name, department.Code, department.IsActive, department.InstitutionId));
     }
 }

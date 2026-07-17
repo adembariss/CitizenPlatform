@@ -10,6 +10,8 @@ public interface ICurrentUserService
 
     Guid? MunicipalityId { get; }
 
+    Guid? InstitutionId { get; }
+
     UserType? UserType { get; }
 
     IReadOnlyCollection<string> Roles { get; }

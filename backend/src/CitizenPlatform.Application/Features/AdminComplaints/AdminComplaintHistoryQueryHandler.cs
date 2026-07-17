@@ -18,9 +18,8 @@ public sealed class AdminComplaintHistoryQueryHandler
         TenantScope scope,
         CancellationToken cancellationToken)
     {
-        var tenantMunicipalityId = scope.IsSystemAdmin ? (Guid?)null : scope.MunicipalityId;
-        var row = await _repository.GetDetailAsync(complaintId, tenantMunicipalityId, cancellationToken);
-        if (row is null)
+        var row = await _repository.GetDetailAsync(complaintId, null, cancellationToken);
+        if (row is null || !scope.CanAccessComplaint(row.Complaint.MunicipalityId, row.Complaint.InstitutionId))
         {
             return null;
         }

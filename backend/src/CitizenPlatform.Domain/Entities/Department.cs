@@ -8,16 +8,21 @@ public sealed class Department : AuditableEntity
     {
     }
 
-    private Department(Guid id, Guid municipalityId, string name, string code)
+    private Department(Guid id, Guid? municipalityId, Guid? institutionId, string name, string code)
         : base(id)
     {
-        MunicipalityId = Guard.AgainstEmpty(municipalityId, nameof(municipalityId));
+        MunicipalityId = municipalityId == Guid.Empty ? null : municipalityId;
+        InstitutionId = institutionId == Guid.Empty ? null : institutionId;
         Name = Guard.AgainstEmpty(name, nameof(name), 200);
         Code = Guard.AgainstEmpty(code, nameof(code), 50).ToUpperInvariant();
         IsActive = true;
     }
 
-    public Guid MunicipalityId { get; private set; }
+    /// <summary>Belediye birimi ise dolu; kurum biriminde boştur.</summary>
+    public Guid? MunicipalityId { get; private set; }
+
+    /// <summary>Dağıtım kurumu (elektrik/su/doğalgaz) birimi ise dolu; belediye biriminde boştur.</summary>
+    public Guid? InstitutionId { get; private set; }
 
     public string Name { get; private set; } = string.Empty;
 
@@ -27,7 +32,13 @@ public sealed class Department : AuditableEntity
 
     public static Department Create(Guid municipalityId, string name, string code)
     {
-        return new Department(Guid.NewGuid(), municipalityId, name, code);
+        return new Department(Guid.NewGuid(), Guard.AgainstEmpty(municipalityId, nameof(municipalityId)), null, name, code);
+    }
+
+    /// <summary>Dağıtım kurumuna ait birim oluşturur (belediye birimlerinden ayrı yapı).</summary>
+    public static Department CreateForInstitution(Guid institutionId, string name, string code)
+    {
+        return new Department(Guid.NewGuid(), null, Guard.AgainstEmpty(institutionId, nameof(institutionId)), name, code);
     }
 
     public void Rename(string name)

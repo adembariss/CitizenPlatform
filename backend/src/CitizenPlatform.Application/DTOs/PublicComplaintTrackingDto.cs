@@ -16,7 +16,9 @@ public sealed record PublicComplaintTrackingDto(
     DateTimeOffset? ClosedAt,
     int AttachmentCount,
     IReadOnlyList<PublicComplaintStatusHistoryDto> StatusHistory,
-    IReadOnlyList<PublicComplaintResponseDto> Responses);
+    IReadOnlyList<PublicComplaintResponseDto> Responses,
+    // true ise şikayet bir dağıtım kurumuna (elektrik/su/doğalgaz) düştü; MunicipalityName kurum adını taşır.
+    bool IsInstitution);
 
 public sealed record PublicComplaintStatusHistoryDto(
     ComplaintStatus? PreviousStatus,

@@ -10,11 +10,15 @@ internal static class CurrentUserComposer
         User user,
         IUserRepository userRepository,
         IMunicipalityRepository municipalityRepository,
+        IInstitutionRepository institutionRepository,
         CancellationToken cancellationToken)
     {
         var roleAssignments = await userRepository.GetActiveRoleAssignmentsAsync(user.Id, cancellationToken);
         var municipalityId = roleAssignments
             .Select(assignment => assignment.MunicipalityId)
+            .FirstOrDefault(id => id is not null);
+        var institutionId = roleAssignments
+            .Select(assignment => assignment.InstitutionId)
             .FirstOrDefault(id => id is not null);
 
         string? municipalityName = null;
@@ -22,6 +26,13 @@ internal static class CurrentUserComposer
         {
             var municipality = await municipalityRepository.GetByIdAsync(municipalityId.Value, cancellationToken);
             municipalityName = municipality?.Name;
+        }
+
+        string? institutionName = null;
+        if (institutionId is not null)
+        {
+            var institution = await institutionRepository.GetByIdAsync(institutionId.Value, cancellationToken);
+            institutionName = institution?.Name;
         }
 
         var roles = roleAssignments
@@ -35,7 +46,10 @@ internal static class CurrentUserComposer
             user.Email,
             user.UserType.ToString(),
             municipalityId,
-            municipalityName,
-            roles);
+            // Kurum yöneticisinde belediye adı yerine kurum adını göster (panel başlığı için).
+            municipalityName ?? institutionName,
+            roles,
+            institutionId,
+            institutionName);
     }
 }

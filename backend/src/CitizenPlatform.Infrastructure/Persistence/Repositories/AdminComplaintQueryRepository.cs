@@ -29,9 +29,20 @@ public sealed class AdminComplaintQueryRepository : IAdminComplaintQueryReposito
             from citizen in citizenJoin.DefaultIfEmpty()
             select new { complaint, municipality, category, department, citizen };
 
-        if (criteria.MunicipalityId is not null)
+        if (criteria.InstitutionId is not null)
         {
-            query = query.Where(row => row.complaint.MunicipalityId == criteria.MunicipalityId);
+            // Kurum yöneticisi: yalnızca o kuruma düşen şikayetler.
+            query = query.Where(row => row.complaint.InstitutionId == criteria.InstitutionId);
+        }
+        else
+        {
+            // Belediye/SystemAdmin görünümü: kuruma (elektrik/su/doğalgaz) düşenler hariç.
+            query = query.Where(row => row.complaint.InstitutionId == null);
+
+            if (criteria.MunicipalityId is not null)
+            {
+                query = query.Where(row => row.complaint.MunicipalityId == criteria.MunicipalityId);
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(criteria.Province))

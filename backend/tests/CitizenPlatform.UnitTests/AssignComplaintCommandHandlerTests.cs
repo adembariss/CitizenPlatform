@@ -139,7 +139,7 @@ public sealed class AssignComplaintCommandHandlerTests
             return Task.FromResult(_department.Id == id ? _department : null);
         }
 
-        public Task<IReadOnlyList<Department>> ListAsync(Guid? municipalityId, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<Department>> ListAsync(Guid? municipalityId, Guid? institutionId, CancellationToken cancellationToken)
         {
             return Task.FromResult<IReadOnlyList<Department>>([_department]);
         }
@@ -198,6 +198,7 @@ public sealed class AssignComplaintCommandHandlerTests
         public bool IsAuthenticated => true;
 
         public Guid? MunicipalityId { get; }
+        public Guid? InstitutionId { get; }
 
         public UserType? UserType { get; }
 

@@ -12,6 +12,7 @@ public sealed class LoginCommandHandler
     private readonly IValidator<LoginCommand> _validator;
     private readonly IUserRepository _userRepository;
     private readonly IMunicipalityRepository _municipalityRepository;
+    private readonly IInstitutionRepository _institutionRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenService _tokenService;
     private readonly IRefreshTokenService _refreshTokenService;
@@ -20,6 +21,7 @@ public sealed class LoginCommandHandler
         IValidator<LoginCommand> validator,
         IUserRepository userRepository,
         IMunicipalityRepository municipalityRepository,
+        IInstitutionRepository institutionRepository,
         IPasswordHasher passwordHasher,
         ITokenService tokenService,
         IRefreshTokenService refreshTokenService)
@@ -27,6 +29,7 @@ public sealed class LoginCommandHandler
         _validator = validator;
         _userRepository = userRepository;
         _municipalityRepository = municipalityRepository;
+        _institutionRepository = institutionRepository;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
         _refreshTokenService = refreshTokenService;
@@ -57,6 +60,7 @@ public sealed class LoginCommandHandler
             user,
             _userRepository,
             _municipalityRepository,
+            _institutionRepository,
             cancellationToken);
 
         var token = _tokenService.CreateAccessToken(new AccessTokenRequest(
@@ -65,7 +69,8 @@ public sealed class LoginCommandHandler
             user.DisplayName,
             user.UserType,
             currentUser.MunicipalityId,
-            currentUser.Roles));
+            currentUser.Roles,
+            currentUser.InstitutionId));
 
         var refreshToken = await _refreshTokenService.IssueAsync(user.Id, cancellationToken);
 

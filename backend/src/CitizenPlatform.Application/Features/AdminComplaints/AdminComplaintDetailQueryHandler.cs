@@ -19,10 +19,15 @@ public sealed class AdminComplaintDetailQueryHandler
         TenantScope scope,
         CancellationToken cancellationToken)
     {
-        var tenantMunicipalityId = scope.IsSystemAdmin ? (Guid?)null : scope.MunicipalityId;
-        var row = await _repository.GetDetailAsync(complaintId, tenantMunicipalityId, cancellationToken);
+        // Yetki kontrolü kurum-farkında olduğundan repo'da belediye filtresi uygulamıyoruz;
+        // erişimi burada CanAccessComplaint ile (belediye + kurum) belirliyoruz.
+        var row = await _repository.GetDetailAsync(complaintId, null, cancellationToken);
+        if (row is null || !scope.CanAccessComplaint(row.Complaint.MunicipalityId, row.Complaint.InstitutionId))
+        {
+            return null;
+        }
 
-        return row is null ? null : Map(row);
+        return Map(row);
     }
 
     internal static AdminComplaintDetailDto Map(AdminComplaintDetailRow row)
