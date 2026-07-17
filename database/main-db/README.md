@@ -10,6 +10,10 @@ CitizenPlatform ana PostgreSQL + PostGIS veritabanı için bootstrap scriptleri 
 - `006_set_province_center.sql`: mevcut belediyelere il + merkez koordinatı doldurur.
 - `007_seed_istanbul_real_boundaries.sql`: İstanbul ilçelerine geoBoundaries ADM2 gerçek poligonları.
 - `008_seed_bulk_district_catalog.sql`: toplu içe aktarılan `TR_*` ilçelere kategori/birim/kural.
+- `009_seed_pharmacies.sql`: örnek eczane verisi (demo; canlı nöbetçi veri için `Pharmacies:Provider=NosyApi`).
+- `010_seed_institutions.sql`: dağıtım kurumları (21 elektrik + 30 büyükşehir su + 15 doğalgaz) —
+  hizmet bölgeleri, sektöre özel kategori ve birimleriyle. **Production'da da gereken referans
+  verisidir**; demo hesap oluşturmaz (onları yalnızca Development seeder'ı açar).
 
 ### Tüm Türkiye ilçeleri (gerçek sınır) — betikle üretilir
 
