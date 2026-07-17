@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import markerIconUrl from 'leaflet/dist/images/marker-icon.png';
@@ -33,6 +33,7 @@ export function LocationMap({ position, onPick }: LocationMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
   const onPickRef = useRef(onPick);
+  const [isExpanded, setIsExpanded] = useState(false);
   onPickRef.current = onPick;
 
   useEffect(() => {
@@ -40,8 +41,10 @@ export function LocationMap({ position, onPick }: LocationMapProps) {
       return;
     }
 
-    const map = L.map(containerRef.current).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    const map = L.map(containerRef.current, { scrollWheelZoom: true, zoomControl: false }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
     mapRef.current = map;
+
+    L.control.zoom({ position: 'topright' }).addTo(map);
 
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -87,5 +90,44 @@ export function LocationMap({ position, onPick }: LocationMapProps) {
     map.panTo(latLng);
   }, [position]);
 
-  return <div ref={containerRef} className="location-map" aria-label="Konum seçme haritası" />;
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => mapRef.current?.invalidateSize());
+    if (isExpanded) {
+      document.body.classList.add('map-expanded-open');
+    } else {
+      document.body.classList.remove('map-expanded-open');
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsExpanded(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.classList.remove('map-expanded-open');
+    };
+  }, [isExpanded]);
+
+  return (
+    <div className={`location-map-shell${isExpanded ? ' is-expanded' : ''}`}>
+      <div ref={containerRef} className="location-map" aria-label="Konum seçme haritası" />
+      <span className="location-map-instruction">Sorunun bulunduğu noktaya tıklayın</span>
+      <button
+        type="button"
+        className="location-expand-button"
+        onClick={() => setIsExpanded((expanded) => !expanded)}
+        aria-expanded={isExpanded}
+      >
+        <ExpandIcon collapsed={!isExpanded} /> {isExpanded ? 'Haritayı küçült' : 'Haritayı büyüt'}
+      </button>
+    </div>
+  );
+}
+
+function ExpandIcon({ collapsed }: { collapsed: boolean }) {
+  return collapsed
+    ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5" /></svg>
+    : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v6H3M15 3v6h6M15 21v-6h6M9 21v-6H3" /></svg>;
 }

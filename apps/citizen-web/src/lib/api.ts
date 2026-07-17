@@ -40,6 +40,8 @@ export type CreateComplaintRequest = {
   isAnonymous: boolean;
   source: 'CitizenWeb';
   municipalityId?: string;
+  // Dolu ise şikayet bir dağıtım kurumuna (elektrik/su/doğalgaz) yönlenir.
+  institutionId?: string;
 };
 
 export type District = {
@@ -77,6 +79,8 @@ export type TrackedComplaint = {
   attachmentCount: number;
   statusHistory: ComplaintStatusHistoryEntry[];
   responses: ComplaintResponseEntry[];
+  // true ise şikayet bir dağıtım kurumuna düştü; municipalityName kurum adını taşır.
+  isInstitution: boolean;
 };
 
 async function readJson<T>(response: Response): Promise<ApiResponse<T>> {
@@ -155,6 +159,33 @@ export async function getDistricts(province: string): Promise<ApiResponse<Distri
   return readJson<District[]>(response);
 }
 
+export type Institution = {
+  id: string;
+  name: string;
+  type: 'Electricity' | 'Water' | 'NaturalGas' | string;
+  typeLabel: string;
+};
+
+// Konumdaki dağıtım kurumları — elektrik/su/doğalgaz. Adres modunda il/ilçe, harita modunda
+// çözülen belediyenin id'si ile sorgulanır (il sunucuda türetilir).
+export async function getInstitutions(params: {
+  province?: string;
+  district?: string;
+  municipalityId?: string;
+}): Promise<ApiResponse<Institution[]>> {
+  const query = new URLSearchParams();
+  if (params.province) query.set('province', params.province);
+  if (params.district) query.set('district', params.district);
+  if (params.municipalityId) query.set('municipalityId', params.municipalityId);
+  const response = await fetch(`/api/public/institutions?${query.toString()}`);
+  return readJson<Institution[]>(response);
+}
+
+export async function getInstitutionCategories(institutionId: string): Promise<ApiResponse<PublicCategory[]>> {
+  const response = await fetch(`/api/public/institutions/${institutionId}/categories`);
+  return readJson<PublicCategory[]>(response);
+}
+
 export async function createComplaint(request: CreateComplaintRequest): Promise<ApiResponse<CreateComplaintResponse>> {
   const response = await fetch('/api/public/complaints', {
     method: 'POST',
@@ -176,6 +207,7 @@ function buildComplaintForm(request: CreateComplaintRequest, files: File[]): For
 
   if (request.title) form.append('title', request.title);
   if (request.municipalityId) form.append('municipalityId', request.municipalityId);
+  if (request.institutionId) form.append('institutionId', request.institutionId);
   if (request.citizenFullName) form.append('citizenFullName', request.citizenFullName);
   if (request.citizenPhoneNumber) form.append('citizenPhoneNumber', request.citizenPhoneNumber);
   if (request.citizenEmail) form.append('citizenEmail', request.citizenEmail);

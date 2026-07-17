@@ -5,10 +5,13 @@ import {
   createComplaintWithPhotos,
   getCurrentPosition,
   getDistricts,
+  getInstitutionCategories,
+  getInstitutions,
   getMunicipalityCategories,
   getProvinces,
   resolveMunicipality,
   District,
+  Institution,
   PublicCategory
 } from '../lib/api';
 import { LatLng, LocationMap } from '../components/LocationMap';
@@ -16,6 +19,13 @@ import { useAuth } from '../lib/AuthContext';
 import { createComplaintAuthed } from '../lib/auth';
 
 const MAX_PHOTOS = 5;
+
+function institutionEmoji(type: string): string {
+  if (type === 'Electricity') return '⚡';
+  if (type === 'Water') return '💧';
+  if (type === 'NaturalGas') return '🔥';
+  return '🏢';
+}
 
 type MunicipalityState =
   | { status: 'idle' }
@@ -63,6 +73,9 @@ export function ReportForm({ onTrack }: ReportFormProps) {
   const [selectedProvince, setSelectedProvince] = useState('');
   const [districts, setDistricts] = useState<District[]>([]);
   const [addressMunicipalityId, setAddressMunicipalityId] = useState<string | null>(null);
+  // Kime bildireceği: null = belediye, aksi halde seçilen dağıtım kurumunun id'si.
+  const [institutions, setInstitutions] = useState<Institution[]>([]);
+  const [targetInstitutionId, setTargetInstitutionId] = useState<string | null>(null);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const photosRef = useRef<PhotoItem[]>([]);
@@ -132,6 +145,29 @@ export function ReportForm({ onTrack }: ReportFormProps) {
 
   const municipalityId = municipality.status === 'resolved' ? municipality.municipalityId : null;
 
+  // Belediye çözülünce o bölgedeki dağıtım kurumlarını getir ve hedefi belediyeye sıfırla.
+  useEffect(() => {
+    setInstitutions([]);
+    setTargetInstitutionId(null);
+    if (!municipalityId) {
+      return;
+    }
+
+    let cancelled = false;
+    getInstitutions({ municipalityId })
+      .then((result) => {
+        if (!cancelled && result.success && result.data) {
+          setInstitutions(result.data);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [municipalityId]);
+
+  // Kategoriler: hedef belediye ise belediye kategorileri, kurum ise kurum kategorileri.
   useEffect(() => {
     if (!municipalityId) {
       return;
@@ -140,7 +176,11 @@ export function ReportForm({ onTrack }: ReportFormProps) {
     let cancelled = false;
     setCategoriesState({ status: 'loading' });
 
-    getMunicipalityCategories(municipalityId)
+    const loader = targetInstitutionId
+      ? getInstitutionCategories(targetInstitutionId)
+      : getMunicipalityCategories(municipalityId);
+
+    loader
       .then((result) => {
         if (cancelled) return;
 
@@ -160,7 +200,7 @@ export function ReportForm({ onTrack }: ReportFormProps) {
     return () => {
       cancelled = true;
     };
-  }, [municipalityId]);
+  }, [municipalityId, targetInstitutionId]);
 
   function handleModeChange(nextMode: LocationMode) {
     setMode(nextMode);
@@ -267,8 +307,39 @@ export function ReportForm({ onTrack }: ReportFormProps) {
     }
 
     setSubmit({ status: 'submitting' });
+    const resolvedMunicipalityId = municipality.municipalityId;
 
     try {
+    // Kurum (elektrik/su/doğalgaz) şikayeti: her zaman public uç + institutionId; konum
+    // belediyesi kayıt için municipalityId olarak geçer.
+    if (targetInstitutionId) {
+      const institutionRequest = {
+        categoryId,
+        title: title || undefined,
+        description,
+        citizenFullName: isAnonymous ? undefined : citizenFullName || undefined,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        isAnonymous,
+        source: 'CitizenWeb' as const,
+        municipalityId: resolvedMunicipalityId,
+        institutionId: targetInstitutionId
+      };
+
+      const institutionResult =
+        photos.length > 0
+          ? await createComplaintWithPhotos(institutionRequest, photos.map((photo) => photo.file))
+          : await createComplaint(institutionRequest);
+
+      if (!institutionResult.success || !institutionResult.data) {
+        setSubmit({ status: 'error', message: institutionResult.message ?? 'Bildirim gönderilemedi.' });
+        return;
+      }
+
+      setSubmit({ status: 'success', trackingCode: institutionResult.data.trackingCode });
+      return;
+    }
+
     // Logged-in citizens: attach the complaint to their account via the authenticated
     // JSON endpoint, then upload any photos through the public attachments endpoint.
     if (isAuthenticated && token) {
@@ -352,13 +423,22 @@ export function ReportForm({ onTrack }: ReportFormProps) {
 
   return (
     <>
-      <section className="intro">
+      <section className="intro report-intro">
         <p>Vatandaş başvuru ekranı</p>
         <h1>Mahallendeki sorunu belediyeye ilet.</h1>
+        <span>Konumu işaretle, ayrıntıları paylaş ve başvurunu anında takip etmeye başla.</span>
+        <div className="report-progress" aria-label="Başvuru adımları">
+          <span><strong>1</strong> Konum</span>
+          <span><strong>2</strong> Detaylar</span>
+          <span><strong>3</strong> Gönder</span>
+        </div>
       </section>
-      <form className="report-form" onSubmit={handleSubmit}>
-        <div className="map-field">
-          <span className="map-field-label">Konum</span>
+      <form className="report-form report-create-form" onSubmit={handleSubmit}>
+        <div className="map-field report-map-field">
+          <div className="report-section-heading">
+            <span className="report-section-number">1</span>
+            <span><strong>Sorunun konumunu seç</strong><small>Haritaya tıkla veya mevcut konumunu kullan.</small></span>
+          </div>
           <div className="mode-toggle" role="tablist" aria-label="Konum seçme yöntemi">
             <button
               type="button"
@@ -424,17 +504,49 @@ export function ReportForm({ onTrack }: ReportFormProps) {
           {municipality.status === 'resolving' && <p className="map-status">Belediye sorgulanıyor...</p>}
           {municipality.status === 'resolved' && (
             <p className="map-status resolved">
-              Hizmet veren belediye: <strong>{municipality.municipalityName}</strong>
+              Konumun: <strong>{municipality.municipalityName}</strong>
             </p>
+          )}
+          {municipality.status === 'resolved' && institutions.length > 0 && (
+            <div className="target-picker">
+              <span className="map-field-label">Kime bildireceksin?</span>
+              <div className="target-options">
+                <button
+                  type="button"
+                  className={targetInstitutionId === null ? 'target-chip active' : 'target-chip'}
+                  onClick={() => setTargetInstitutionId(null)}
+                >
+                  <span className="target-emoji" aria-hidden="true">🏛</span>
+                  <span className="target-copy">
+                    <strong>{municipality.municipalityName}</strong>
+                    <small>Belediye</small>
+                  </span>
+                </button>
+                {institutions.map((institution) => (
+                  <button
+                    key={institution.id}
+                    type="button"
+                    className={targetInstitutionId === institution.id ? 'target-chip active' : 'target-chip'}
+                    onClick={() => setTargetInstitutionId(institution.id)}
+                  >
+                    <span className="target-emoji" aria-hidden="true">{institutionEmoji(institution.type)}</span>
+                    <span className="target-copy">
+                      <strong>{institution.name}</strong>
+                      <small>{institution.typeLabel}</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
           {municipality.status === 'error' && <p className="form-error">{municipality.message}</p>}
         </div>
 
-        <label>
+        <label className="report-title-field">
           Başlık
           <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Örn. Kaldırım hasarı" />
         </label>
-        <label>
+        <label className="report-category-field">
           Kategori
           <select
             required
@@ -455,7 +567,7 @@ export function ReportForm({ onTrack }: ReportFormProps) {
           </select>
         </label>
         {categoriesState.status === 'error' && <p className="form-error">{categoriesState.message}</p>}
-        <label>
+        <label className="report-description-field">
           Açıklama
           <textarea
             required
@@ -466,7 +578,7 @@ export function ReportForm({ onTrack }: ReportFormProps) {
           />
         </label>
 
-        <div className="photo-field">
+        <div className="photo-field report-photo-field">
           <span className="map-field-label">Fotoğraflar (en fazla {MAX_PHOTOS})</span>
           <input
             ref={fileInputRef}
@@ -491,18 +603,18 @@ export function ReportForm({ onTrack }: ReportFormProps) {
         </div>
 
         {isAuthenticated ? (
-          <p className="field-hint account-hint">
+          <p className="field-hint account-hint report-account-field">
             {user ? `${user.fullName} hesabıyla gönderiyorsun` : 'Hesabınla gönderiyorsun'} — bu bildirim
             "Şikayetlerim" sayfanda görünecek.
           </p>
         ) : (
           <>
-            <label className="checkbox-label">
+            <label className="checkbox-label report-anonymous-field">
               <input type="checkbox" checked={isAnonymous} onChange={(event) => setIsAnonymous(event.target.checked)} />
               Anonim gönder
             </label>
             {!isAnonymous && (
-              <label>
+              <label className="report-identity-field">
                 Ad Soyad (opsiyonel)
                 <input value={citizenFullName} onChange={(event) => setCitizenFullName(event.target.value)} placeholder="Ada Lovelace" />
               </label>
@@ -510,9 +622,9 @@ export function ReportForm({ onTrack }: ReportFormProps) {
           </>
         )}
 
-        {submit.status === 'error' && <p className="form-error">{submit.message}</p>}
+        {submit.status === 'error' && <p className="form-error report-submit-message">{submit.message}</p>}
 
-        <button type="submit" disabled={submit.status === 'submitting' || municipality.status !== 'resolved'}>
+        <button className="report-submit-button" type="submit" disabled={submit.status === 'submitting' || municipality.status !== 'resolved'}>
           {submit.status === 'submitting' ? 'Gönderiliyor...' : 'Bildirim oluştur'}
         </button>
       </form>

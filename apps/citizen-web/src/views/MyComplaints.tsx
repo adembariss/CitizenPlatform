@@ -43,16 +43,33 @@ export function MyComplaints({ onTrack, onReport }: MyComplaintsProps) {
     };
   }, [token]);
 
+  const items = state.status === 'loaded' ? state.items : [];
+  const completedStatuses = new Set(['Resolved', 'Closed']);
+  const completedCount = items.filter((item) => completedStatuses.has(item.status)).length;
+  const openCount = items.length - completedCount;
+
   return (
     <>
-      <section className="intro">
-        <p>Hesabım</p>
-        <h1>Merhaba{user ? `, ${user.fullName}` : ''}.</h1>
+      <section className="intro mine-intro">
+        <div>
+          <p>VATANDAŞ HESABI</p>
+          <h1>Merhaba{user ? `, ${user.fullName}` : ''}.</h1>
+          <span>Tüm başvurularını, güncel durumlarını ve belediye süreçlerini tek ekrandan takip et.</span>
+        </div>
+        <button type="button" className="mine-new-button" onClick={onReport}>Yeni bildirim oluştur <span aria-hidden="true">→</span></button>
       </section>
-      <div className="track-shell">
-        <div className="report-form">
+      <div className="track-shell mine-shell">
+        <div className="mine-summary-grid" aria-label="Başvuru özeti">
+          <article><span>Toplam başvuru</span><strong>{items.length}</strong><small>Tüm kayıtların</small></article>
+          <article><span>Açık başvuru</span><strong>{openCount}</strong><small>İşlem devam ediyor</small></article>
+          <article><span>Sonuçlanan</span><strong>{completedCount}</strong><small>Çözülen talepler</small></article>
+        </div>
+        <div className="report-form mine-panel">
           <div className="mine-header">
-            <h2>Şikayetlerim</h2>
+            <div>
+              <h2>Başvurularım</h2>
+              <p>{items.length > 0 ? `${items.length} kayıt görüntüleniyor` : 'Başvuru geçmişin'}</p>
+            </div>
             <button type="button" className="secondary-button" onClick={logout}>
               Çıkış yap
             </button>
@@ -75,18 +92,20 @@ export function MyComplaints({ onTrack, onReport }: MyComplaintsProps) {
               {state.items.map((item) => (
                 <li key={item.trackingCode}>
                   <button type="button" className="mine-item" onClick={() => onTrack(item.trackingCode)}>
-                    <div className="mine-item-top">
-                      <span className="mine-item-title">{item.title || 'Başvuru'}</span>
-                      <span className={`status-badge status-${item.status.toLowerCase()}`}>{statusLabel(item.status)}</span>
+                    <span className={`mine-status-mark status-${item.status.toLowerCase()}`} aria-hidden="true" />
+                    <div className="mine-item-content">
+                      <div className="mine-item-top">
+                        <span className="mine-item-title">{item.title || 'Başvuru'}</span>
+                        <span className={`status-badge status-${item.status.toLowerCase()}`}>{statusLabel(item.status)}</span>
+                      </div>
+                      <div className="mine-item-meta">
+                        <span>{item.municipalityName}</span>
+                        <span>{item.categoryName}</span>
+                        <span>{item.trackingCode}</span>
+                      </div>
+                      <div className="mine-item-date">Oluşturulma: {formatDateTime(item.createdAt)}</div>
                     </div>
-                    <div className="mine-item-meta">
-                      <span>{item.municipalityName}</span>
-                      <span>·</span>
-                      <span>{item.categoryName}</span>
-                      <span>·</span>
-                      <span>{item.trackingCode}</span>
-                    </div>
-                    <div className="mine-item-date">{formatDateTime(item.createdAt)}</div>
+                    <span className="mine-item-arrow" aria-hidden="true">→</span>
                   </button>
                 </li>
               ))}

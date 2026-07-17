@@ -21,17 +21,26 @@ type View =
   | { name: 'mine' };
 
 export function App() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
   const [view, setView] = useState<View>({ name: 'home' });
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const goHome = () => setView({ name: 'home' });
-  const goReport = () => setView({ name: 'report' });
-  const goTrack = (initialCode?: string) => setView({ name: 'track', initialCode });
-  const goPharmacies = () => setView({ name: 'pharmacies' });
-  const goLogin = () => setView({ name: 'login' });
-  const goRegister = () => setView({ name: 'register' });
-  const goVerify = (codePreview: string | null) => setView({ name: 'verify', codePreview });
-  const goMine = () => setView({ name: 'mine' });
+  const showView = (nextView: View) => {
+    setView(nextView);
+    setMenuOpen(false);
+  };
+  const handleLogout = () => {
+    logout();
+    showView({ name: 'home' });
+  };
+  const goHome = () => showView({ name: 'home' });
+  const goReport = () => showView({ name: 'report' });
+  const goTrack = (initialCode?: string) => showView({ name: 'track', initialCode });
+  const goPharmacies = () => showView({ name: 'pharmacies' });
+  const goLogin = () => showView({ name: 'login' });
+  const goRegister = () => showView({ name: 'register' });
+  const goVerify = (codePreview: string | null) => showView({ name: 'verify', codePreview });
+  const goMine = () => showView({ name: 'mine' });
 
   return (
     <div className="portal">
@@ -44,7 +53,18 @@ export function App() {
           </span>
         </button>
 
-        <nav className="site-nav" aria-label="Ana menü">
+        <button
+          type="button"
+          className="nav-toggle"
+          aria-expanded={menuOpen}
+          aria-controls="citizen-navigation"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <span aria-hidden="true">{menuOpen ? '×' : '☰'}</span>
+          <span className="visually-hidden">{menuOpen ? 'Menüyü kapat' : 'Menüyü aç'}</span>
+        </button>
+
+        <nav className={`site-nav${menuOpen ? ' site-nav-open' : ''}`} id="citizen-navigation" aria-label="Ana menü">
           <button type="button" className={navClass(view.name === 'home')} onClick={goHome}>
             Ana Sayfa
           </button>
@@ -58,9 +78,20 @@ export function App() {
             Eczaneler
           </button>
           {isAuthenticated ? (
-            <button type="button" className={navClass(view.name === 'mine')} onClick={goMine}>
-              Şikayetlerim
-            </button>
+            <>
+              <button type="button" className={navClass(view.name === 'mine')} onClick={goMine}>
+                Şikayetlerim
+              </button>
+              <div className="nav-account">
+                <span className="nav-account-badge" aria-hidden="true">
+                  {(user?.fullName || user?.email || '?').trim().charAt(0).toUpperCase()}
+                </span>
+                <span className="nav-account-name" title={user?.email}>{user?.fullName || 'Hesabım'}</span>
+                <button type="button" className="nav-logout" onClick={handleLogout}>
+                  Çıkış
+                </button>
+              </div>
+            </>
           ) : (
             <>
               <button type="button" className={navClass(view.name === 'login')} onClick={goLogin}>
@@ -79,7 +110,7 @@ export function App() {
 
         {view.name === 'report' && (
           <div className="page">
-            <div className="citizen-shell">
+            <div className="citizen-shell report-shell">
               <ReportForm onTrack={goTrack} />
             </div>
           </div>
@@ -95,7 +126,7 @@ export function App() {
 
         {view.name === 'pharmacies' && (
           <div className="page">
-            <div className="track-shell">
+            <div className="pharmacy-shell">
               <PharmaciesView />
             </div>
           </div>
@@ -122,7 +153,9 @@ export function App() {
         {view.name === 'mine' &&
           (isAuthenticated ? (
             <div className="page">
-              <MyComplaints onTrack={goTrack} onReport={goReport} />
+              <div className="mine-page">
+                <MyComplaints onTrack={goTrack} onReport={goReport} />
+              </div>
             </div>
           ) : (
             <div className="page">

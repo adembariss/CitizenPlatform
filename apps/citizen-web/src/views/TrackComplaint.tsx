@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { trackComplaint, TrackedComplaint } from '../lib/api';
-import { formatDateTime, statusLabel } from '../lib/status';
+import { formatDateTime, statusHistoryNote, statusLabel } from '../lib/status';
 
 type TrackState =
   | { status: 'idle' }
@@ -100,7 +100,7 @@ function ComplaintDetails({ complaint }: { complaint: TrackedComplaint }) {
           <dd>{complaint.trackingCode}</dd>
         </div>
         <div>
-          <dt>Belediye</dt>
+          <dt>{complaint.isInstitution ? 'Kurum' : 'Belediye'}</dt>
           <dd>{complaint.municipalityName}</dd>
         </div>
         <div>
@@ -147,14 +147,14 @@ function ComplaintDetails({ complaint }: { complaint: TrackedComplaint }) {
                 {statusLabel(entry.newStatus)}
               </span>
               <span className="timeline-date">{formatDateTime(entry.createdAt)}</span>
-              {entry.note && <span className="timeline-note">{entry.note}</span>}
+              {entry.note && <span className="timeline-note">{statusHistoryNote(entry.note)}</span>}
             </li>
           ))}
         </ol>
       </div>
 
       <div className="track-section">
-        <h3>Belediye yanıtları</h3>
+        <h3>{complaint.isInstitution ? 'Kurum yanıtları' : 'Belediye yanıtları'}</h3>
         {complaint.responses.length === 0 ? (
           <p className="track-empty">Henüz bir yanıt bulunmuyor.</p>
         ) : (
