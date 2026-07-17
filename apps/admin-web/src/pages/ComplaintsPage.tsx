@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AdminComplaintListResponse, Category, getAdminComplaints, getCategories, getProvinces, getStoredUser } from '../lib/api';
 import { COMPLAINT_STATUSES, formatDateTime, statusClass, statusLabel } from '../lib/labels';
+import { complaintAddress, reporterLabel } from '../lib/complaintPresentation';
 
 const PAGE_SIZE = 20;
 
@@ -163,10 +164,12 @@ export function ComplaintsPage() {
       {loadError && <p className="form-error">{loadError}</p>}
 
       <section className="table-panel" aria-label="Şikayet listesi">
-        <div className="table-row table-row-complaints table-head">
+        <div className={`table-row table-row-complaints${isSystemAdmin ? ' table-row-complaints-admin' : ''} table-head`}>
           <span>Takip Kodu</span>
           <span>Konu</span>
-          <span>Belediye</span>
+          <span>Başvuran</span>
+          <span>Adres</span>
+          {isSystemAdmin && <span>Belediye</span>}
           <span>Kategori</span>
           <span>Birim</span>
           <span>Durum</span>
@@ -179,19 +182,22 @@ export function ComplaintsPage() {
         {!loading &&
           data?.items.map((complaint) => (
             <Link
-              className="table-row table-row-complaints table-row-link"
+              className={`table-row table-row-complaints${isSystemAdmin ? ' table-row-complaints-admin' : ''} table-row-link`}
               key={complaint.id}
               to={`/complaints/${complaint.id}`}
             >
-              <span>{complaint.trackingCode}</span>
-              <span>{complaint.title}</span>
-              <span>{complaint.municipalityName}</span>
-              <span>{complaint.categoryName}</span>
-              <span>{complaint.departmentName ?? '-'}</span>
+              <TableCell label="Takip kodu" value={complaint.trackingCode} />
+              <TableCell label="Konu" value={complaint.title} />
+              <TableCell label="Başvuran" value={reporterLabel(complaint.citizenFullName)} />
+              <TableCell label="Adres" value={complaintAddress(complaint)} title={complaintAddress(complaint)} />
+              {isSystemAdmin && <TableCell label="Belediye" value={complaint.municipalityName} />}
+              <TableCell label="Kategori" value={complaint.categoryName} />
+              <TableCell label="Birim" value={complaint.departmentName ?? 'Atanmadı'} />
               <span>
+                <span className="mobile-cell-label">Durum</span>
                 <span className={statusClass(complaint.status)}>{statusLabel(complaint.status)}</span>
               </span>
-              <span>{formatDateTime(complaint.createdAt)}</span>
+              <TableCell label="Tarih" value={formatDateTime(complaint.createdAt)} />
             </Link>
           ))}
       </section>
@@ -213,5 +219,14 @@ export function ComplaintsPage() {
         </button>
       </div>
     </>
+  );
+}
+
+function TableCell({ label, value, title }: { label: string; value: string; title?: string }) {
+  return (
+    <span title={title}>
+      <span className="mobile-cell-label">{label}</span>
+      <span>{value}</span>
+    </span>
   );
 }

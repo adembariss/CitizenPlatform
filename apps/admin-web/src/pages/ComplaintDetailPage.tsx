@@ -10,6 +10,8 @@ import {
   getDepartments,
   updateComplaintStatus
 } from '../lib/api';
+import { AttachmentGallery } from '../components/AttachmentGallery';
+import { complaintAddress, reporterLabel } from '../lib/complaintPresentation';
 import {
   COMPLAINT_STATUSES,
   formatDateTime,
@@ -132,10 +134,10 @@ export function ComplaintDetailPage() {
           <DetailField label="Belediye" value={detail.municipalityName} />
           <DetailField label="Kategori" value={detail.categoryName} />
           <DetailField label="Birim" value={detail.departmentName ?? 'Atanmadı'} />
-          <DetailField label="Vatandaş" value={detail.citizenFullName ?? '-'} />
+          <DetailField label="Vatandaş" value={reporterLabel(detail.citizenFullName)} />
           <DetailField label="Telefon" value={detail.citizenPhoneNumber ?? '-'} />
           <DetailField label="E-posta" value={detail.citizenEmail ?? '-'} />
-          <DetailField label="Adres" value={detail.addressText ?? '-'} />
+          <DetailField label="Adres" value={complaintAddress(detail)} />
           <DetailField label="Konum" value={`${detail.latitude.toFixed(5)}, ${detail.longitude.toFixed(5)}`} />
           <DetailField label="Ek dosya sayısı" value={String(detail.attachments.length)} />
           <DetailField label="Oluşturulma" value={formatDateTime(detail.createdAt)} />
@@ -209,22 +211,7 @@ export function ComplaintDetailPage() {
       </section>
 
       {detail.attachments.length > 0 && (
-        <section className="detail-panel" aria-label="Ekler">
-          <h2>Ekler ({detail.attachments.length})</h2>
-          <ul className="timeline">
-            {detail.attachments.map((attachment) => (
-              <li key={attachment.id}>
-                <div className="timeline-head">
-                  <span>{attachment.originalFileName}</span>
-                  <span className="timeline-date">{formatDateTime(attachment.createdAt)}</span>
-                </div>
-                <span className="timeline-meta">
-                  {attachment.contentType} — {(attachment.sizeInBytes / 1024).toFixed(1)} KB
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <AttachmentGallery complaintId={detail.id} attachments={detail.attachments} />
       )}
     </>
   );

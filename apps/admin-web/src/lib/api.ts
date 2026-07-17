@@ -150,6 +150,14 @@ export type DashboardSummary = {
   byDepartment: { departmentId: string; departmentName: string; count: number }[];
 };
 
+export type MunicipalityMapContext = {
+  municipalityId: string;
+  municipalityName: string;
+  centerLatitude: number | null;
+  centerLongitude: number | null;
+  boundaryGeoJson: string | null;
+};
+
 const TOKEN_STORAGE_KEY = 'citizenplatform.admin.accessToken';
 const USER_STORAGE_KEY = 'citizenplatform.admin.user';
 
@@ -246,6 +254,21 @@ export async function getAdminComplaintDetail(id: string): Promise<ApiResponse<A
   return readEnvelope<AdminComplaintDetail>(response);
 }
 
+export async function getAdminComplaintAttachment(
+  complaintId: string,
+  attachmentId: string
+): Promise<Blob> {
+  const response = await authorizedFetch(
+    `/api/admin/complaints/${encodeURIComponent(complaintId)}/attachments/${encodeURIComponent(attachmentId)}`
+  );
+
+  if (!response.ok) {
+    throw new Error(`Ek dosya alınamadı (HTTP ${response.status}).`);
+  }
+
+  return response.blob();
+}
+
 export async function updateComplaintStatus(
   id: string,
   body: { newStatus: string; note: string | null; isVisibleToCitizen: boolean }
@@ -318,4 +341,9 @@ export async function updateDepartment(
 export async function getDashboardSummary(): Promise<ApiResponse<DashboardSummary>> {
   const response = await authorizedFetch('/api/admin/dashboard/summary');
   return readEnvelope<DashboardSummary>(response);
+}
+
+export async function getMunicipalityMapContext(): Promise<ApiResponse<MunicipalityMapContext>> {
+  const response = await authorizedFetch('/api/admin/dashboard/map-context');
+  return readEnvelope<MunicipalityMapContext>(response);
 }
